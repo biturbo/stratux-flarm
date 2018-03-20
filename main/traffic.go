@@ -72,8 +72,8 @@ const (
 	// If we see a proper emitter category and NIC > 7, they'll be reassigned to TYPE_ADSR.
 	TARGET_TYPE_TISB_S          = 3
 	TARGET_TYPE_TISB            = 4
-	SIGNAL_STRENGTH_AVG_N_SHORT = 4 // number of samples used to calulate short rolling average of signal strength
-	SIGNAL_STRENGTH_AVG_N_LONG  = 8 // number of samples used to calulate long rolling average of signal strength
+	SIGNAL_STRENGTH_AVG_N_SHORT = 50  // number of samples used to calulate short rolling average of signal strength
+	SIGNAL_STRENGTH_AVG_N_LONG  = 200 // number of samples used to calulate long rolling average of signal strength
 )
 
 type TrafficInfo struct {
@@ -87,7 +87,7 @@ type TrafficInfo struct {
 	SignalLevel             float64   // Signal level, dB RSSI.
 	SignalLevelAvgShort     float64   // Short rolling average of signal level, dB RSSI
 	SignalLevelAvgLong      float64   // Long rolling average of signal level, dB RSSI
-	SignalLevelSampleCount  uint32    // Number of samples seen for rolling average calculation
+	SignalLevelSampleCount  uint64    // Number of samples seen for rolling average calculation
 	IsSignalLevelIncreasing bool      // Flag that indicates that signal level is increasing (traffic is getting closer)
 	Squawk                  int       // Squawk code
 	Position_valid          bool      //TODO: set when position report received. Unset after n seconds?
@@ -205,20 +205,6 @@ func sendTrafficUpdates() {
 		}
 		ti.Age = stratuxClock.Since(ti.Last_seen).Seconds()
 		ti.AgeLastAlt = stratuxClock.Since(ti.Last_alt).Seconds()
-
-		// calculate rolling averages of signal strength
-		ti.SignalLevelAvgShort -= ti.SignalLevelAvgShort / SIGNAL_STRENGTH_AVG_N_SHORT
-		ti.SignalLevelAvgShort += ti.SignalLevel / SIGNAL_STRENGTH_AVG_N_SHORT
-		ti.SignalLevelAvgLong -= ti.SignalLevelAvgLong / SIGNAL_STRENGTH_AVG_N_LONG
-		ti.SignalLevelAvgLong += ti.SignalLevel / SIGNAL_STRENGTH_AVG_N_LONG
-		ti.SignalLevelSampleCount += 1
-
-		// check if signal strength is increasing
-		if ti.SignalLevelSampleCount >= SIGNAL_STRENGTH_AVG_N_LONG && ti.SignalLevelAvgShort > ti.SignalLevelAvgLong {
-			ti.IsSignalLevelIncreasing = true
-		} else {
-			ti.IsSignalLevelIncreasing = false
-		}
 
 		// DEBUG: Print the list of all tracked targets (with data) to the log every 15 seconds if "DEBUG" option is enabled
 		if globalSettings.DEBUG && (stratuxClock.Time.Second()%15) == 0 {
@@ -841,6 +827,20 @@ func esListen() {
 
 			if newTi.SignalLevel > 0 {
 				ti.SignalLevel = 10 * math.Log10(newTi.SignalLevel)
+
+				// calculate rolling averages of signal strength
+				ti.SignalLevelAvgShort -= ti.SignalLevelAvgShort / SIGNAL_STRENGTH_AVG_N_SHORT
+				ti.SignalLevelAvgShort += ti.SignalLevel / SIGNAL_STRENGTH_AVG_N_SHORT
+				ti.SignalLevelAvgLong -= ti.SignalLevelAvgLong / SIGNAL_STRENGTH_AVG_N_LONG
+				ti.SignalLevelAvgLong += ti.SignalLevel / SIGNAL_STRENGTH_AVG_N_LONG
+				ti.SignalLevelSampleCount += 1
+
+				// check if signal strength is increasing
+				if ti.SignalLevelSampleCount >= SIGNAL_STRENGTH_AVG_N_LONG && ti.SignalLevelAvgShort > ti.SignalLevelAvgLong {
+					ti.IsSignalLevelIncreasing = true
+				} else {
+					ti.IsSignalLevelIncreasing = false
+				}
 			} else {
 				ti.SignalLevel = -999
 			}
