@@ -19,10 +19,10 @@
 				</div>
 				
 				<div class="col-sm-6">
-					<span class="col-xs-3 text-right"><strong>Altitude</strong></span><span class="col-xs-1">&nbsp;</span>
+					<span class="col-xs-2 text-right"><strong>Altitude</strong></span><span class="col-xs-1">&nbsp;</span>
 					<span class="col-xs-2 text-right"><strong>Speed</strong></span>
 					<span class="col-xs-2 text-right"><strong>Course</strong></span>			
-					<span class="col-xs-2 text-right"><strong>Power</strong></span>
+					<span class="col-xs-2 text-right"><strong>Power</strong></span><span class="col-xs-1">&nbsp;</span>
 					<span class="col-xs-2 text-right"><strong>Age</strong></span>
 				</div>
 			</div>
@@ -49,7 +49,7 @@
 
 				</div>
 				<div class="col-sm-6">
-					<span class="col-xs-3 text-right">{{aircraft.alt}}</span>
+					<span class="col-xs-2 text-right">{{aircraft.alt}}</span>
 					<span class="col-xs-1 small col-padding-shift-right text-muted">
 						<span ng-show="aircraft.vspeed > 0"><span class="fa fa-ascent"></span>{{aircraft.vspeed}}</span>
 						<span ng-show="aircraft.vspeed < 0"><span class="fa fa-descent"></span>{{0-aircraft.vspeed}}</span>
@@ -57,6 +57,9 @@
 					<span class="col-xs-2 text-right">{{aircraft.speed}}<span style="font-size:50%">KTS</span></span>
 					<span class="col-xs-2 text-right"><span ng-show="aircraft.heading < 10">0</span><span ng-show="aircraft.heading < 100">0</span>{{aircraft.heading}}&deg;</span>				
 					<span class="col-xs-2 text-right">{{aircraft.signal.toFixed(2)}}<span style="font-size:50%">dB</span></span>
+					<span class="col-xs-1 small col-padding-shift-right text-muted">
+						<span ng-if="aircraft.signalIncreasing == 1"><span class="fa fa-ascent"></span></span>
+					</span>
 					<span class="col-xs-2 text-right">{{aircraft.age.toFixed(1)}}<span style="font-size:50%">s</span></span>
 				</div>
 			</div>
@@ -104,10 +107,10 @@
 				</div>
 				
 				<div class="col-sm-6">
-					<span class="col-xs-3 text-right"><strong>Altitude</strong></span><span class="col-xs-1">&nbsp;</span>
+					<span class="col-xs-2 text-right"><strong>Altitude</strong></span><span class="col-xs-1">&nbsp;</span>
 					<span class="col-xs-2 text-right"><strong>Speed</strong></span>
 					<span class="col-xs-2 text-right"><strong>Course</strong></span>			
-					<span class="col-xs-2 text-right"><strong>Power</strong></span>
+					<span class="col-xs-2 text-right"><strong>Power</strong></span><span class="col-xs-1">&nbsp;</span>
 					<span class="col-xs-2 text-right"><strong>Age</strong></span>
 				</div>
 			</div>
@@ -128,7 +131,7 @@
 				</div>
 
 				<div class="col-sm-6">
-					<span class="col-xs-3 text-right">{{aircraft.alt}}</span>
+					<span class="col-xs-2 text-right">{{aircraft.alt}}</span>
 					<span class="col-xs-1 small col-padding-shift-right text-muted">
 						<span ng-show="aircraft.vspeed > 0"><span class="fa fa-ascent"></span>{{aircraft.vspeed}}</span>
 						<span ng-show="aircraft.vspeed < 0"><span class="fa fa-descent"></span>{{0-aircraft.vspeed}}</span>
@@ -136,6 +139,9 @@
 					<span class="col-xs-2 text-right">{{aircraft.speed}}<span style="font-size:50%">KTS</span></span>
 					<span class="col-xs-2 text-right"><span ng-show="aircraft.heading < 10">0</span><span ng-show="aircraft.heading < 100">0</span>{{aircraft.heading}}&deg;</span>				
 					<span class="col-xs-2 text-right">{{aircraft.signal.toFixed(2)}}<span style="font-size:50%">dB</span></span>
+					<span class="col-xs-1 small col-padding-shift-right text-muted">
+						<span ng-if="aircraft.signalIncreasing == 1"><span class="fa fa-ascent"></span></span>
+					</span>
 					<span class="col-xs-2 text-right">{{aircraft.ageLastAlt.toFixed(1)}}<span style="font-size:50%">s</span></span>
 				</div>
 			</div>

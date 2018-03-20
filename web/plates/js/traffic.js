@@ -39,17 +39,18 @@ function TrafficCtrl($rootScope, $scope, $state, $http, $interval) {
 		var min;
 		deg = 0 | val;
 		min = 0 | (val < 0 ? val = -val : val) % 1 * 60;
-		
+
 		return [deg*deg < 100 ? "0" + deg : deg,
 				'° ',
 				min < 10 ? "0" + min : min,
 				"' "].join('');
 	}
-	
+
 	function setAircraft(obj, new_traffic) {
 		new_traffic.icao_int = obj.Icao_addr;
 		new_traffic.targettype = obj.TargetType;
 		new_traffic.signal = obj.SignalLevel;
+		new_traffic.signalIncreasing = obj.IsSignalLevelIncreasing;
 		new_traffic.addr_symb ='\u2708';
 		if (new_traffic.targettype > 3) {
 			new_traffic.addr_symb ='\ud83d\udce1';
