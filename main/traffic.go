@@ -72,8 +72,8 @@ const (
 	// If we see a proper emitter category and NIC > 7, they'll be reassigned to TYPE_ADSR.
 	TARGET_TYPE_TISB_S          = 3
 	TARGET_TYPE_TISB            = 4
-	SIGNAL_STRENGTH_AVG_N_SHORT = 50  // number of samples used to calulate short rolling average of signal strength
-	SIGNAL_STRENGTH_AVG_N_LONG  = 200 // number of samples used to calulate long rolling average of signal strength
+	SIGNAL_STRENGTH_AVG_N_SHORT = 40 // number of samples used to calulate short rolling average of signal strength
+	SIGNAL_STRENGTH_AVG_N_LONG  = 50 // number of samples used to calulate long rolling average of signal strength
 )
 
 type TrafficInfo struct {
