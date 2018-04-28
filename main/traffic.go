@@ -324,7 +324,7 @@ func makeTrafficReportMsg(ti TrafficInfo, useOwnPosition bool) []byte {
 	lng := float32(ti.Lng)
 	// use own position for traffic (e.g., for displaying targets without position information)
 	if useOwnPosition {
-		lat = float32(mySituation.GPSLongitude)
+		lng = float32(mySituation.GPSLongitude)
 	}
 	tmp = makeLatLng(lng)
 
