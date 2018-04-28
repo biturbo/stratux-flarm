@@ -158,6 +158,10 @@ var traffic map[uint32]TrafficInfo
 var trafficMutex *sync.Mutex
 var seenTraffic map[uint32]bool // Historical list of all ICAO addresses seen.
 
+// minimum/maximum signal strength ever seen (used for displaying traffic without position information)
+var minSignalLevel1090 float64
+var maxSignalLevel1090 float64
+
 var OwnshipTrafficInfo TrafficInfo
 
 func cleanupOldEntries() {
@@ -240,11 +244,12 @@ func sendTrafficUpdates() {
 						cur_n++
 						msgs = append(msgs, make([]byte, 0))
 					}
-					msgs[cur_n] = append(msgs[cur_n], makeTrafficReportMsg(ti, false)...)
+					msgs[cur_n] = append(msgs[cur_n], makeTrafficReportMsg(ti)...)
 				}
 			}
 		} else { // no valid position
-			if ti.AgeLastAlt < 6 && ti.IsSignalLevelIncreasing { // check for recent valid altitude information and increasing signal strength (traffic is getting closer)
+			// check for recent valid altitude information and increasing signal strength (traffic is getting closer)
+			if ti.AgeLastAlt < 6 && ti.IsSignalLevelIncreasing {
 				cur_n := len(msgs) - 1
 				if len(msgs[cur_n]) >= 35 {
 					// Batch messages into packets with at most 35 traffic reports
@@ -252,7 +257,22 @@ func sendTrafficUpdates() {
 					cur_n++
 					msgs = append(msgs, make([]byte, 0))
 				}
-				msgs[cur_n] = append(msgs[cur_n], makeTrafficReportMsg(ti, true)...)
+
+				// calculate fake distance between 0 and 10 NM based on signal strength
+				fakeDistanceRelative := 1.0 - ((ti.SignalLevelAvgShort - minSignalLevel1090) / (maxSignalLevel1090 - minSignalLevel1090))
+				fakeDistanceNm := fakeDistanceRelative * 10.0
+
+				// copy traffic info to add fake position
+				tiFake := TrafficInfo(ti)
+
+				// fake position will be fakeDistanceNm away from current own position right in the current flight direction
+				fakeLat, fakeLon := calcLocationForBearingDistance(float64(mySituation.GPSLatitude), float64(mySituation.GPSLongitude), float64(mySituation.GPSTrueCourse), fakeDistanceNm)
+				tiFake.Lat = float32(fakeLat)
+				tiFake.Lng = float32(fakeLon)
+
+				// log.Printf("Calculated fake location: icao_addr=%d, signal=%f, distance_rel=%f, distance_abs=%f lat=%f, lon=%f", ti.Icao_addr, ti.SignalLevelAvgShort, fakeDistanceRelative, fakeDistanceNm, tiFake.Lat, tiFake.Lng)
+
+				msgs[cur_n] = append(msgs[cur_n], makeTrafficReportMsg(tiFake)...)
 			}
 		}
 	}
@@ -291,7 +311,7 @@ func isTrafficAlertable(ti TrafficInfo) bool {
 	return false
 }
 
-func makeTrafficReportMsg(ti TrafficInfo, useOwnPosition bool) []byte {
+func makeTrafficReportMsg(ti TrafficInfo) []byte {
 	msg := make([]byte, 28)
 	// See p.16.
 	msg[0] = 0x14 // Message type "Traffic Report".
@@ -311,10 +331,6 @@ func makeTrafficReportMsg(ti TrafficInfo, useOwnPosition bool) []byte {
 	msg[4] = byte((ti.Icao_addr & 0x000000FF))
 
 	lat := float32(ti.Lat)
-	// use own position for traffic (e.g., for displaying targets without position information)
-	if useOwnPosition {
-		lat = float32(mySituation.GPSLatitude)
-	}
 	tmp := makeLatLng(lat)
 
 	msg[5] = tmp[0] // Latitude.
@@ -322,10 +338,6 @@ func makeTrafficReportMsg(ti TrafficInfo, useOwnPosition bool) []byte {
 	msg[7] = tmp[2] // Latitude.
 
 	lng := float32(ti.Lng)
-	// use own position for traffic (e.g., for displaying targets without position information)
-	if useOwnPosition {
-		lng = float32(mySituation.GPSLongitude)
-	}
 	tmp = makeLatLng(lng)
 
 	msg[8] = tmp[0]  // Longitude.
@@ -841,6 +853,14 @@ func esListen() {
 				} else {
 					ti.IsSignalLevelIncreasing = false
 				}
+
+				// update global min/max signal level information
+				if minSignalLevel1090 == 0 || minSignalLevel1090 > ti.SignalLevel {
+					minSignalLevel1090 = ti.SignalLevel
+				}
+				if maxSignalLevel1090 == 0 || maxSignalLevel1090 < ti.SignalLevel {
+					maxSignalLevel1090 = ti.SignalLevel
+				}
 			} else {
 				ti.SignalLevel = -999
 			}
@@ -1338,5 +1358,7 @@ func initTraffic() {
 	traffic = make(map[uint32]TrafficInfo)
 	seenTraffic = make(map[uint32]bool)
 	trafficMutex = &sync.Mutex{}
+	minSignalLevel1090 = 0.0
+	maxSignalLevel1090 = 0.0
 	go esListen()
 }

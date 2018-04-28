@@ -353,3 +353,20 @@ func iMax(x, y int) int {
 	}
 	return y
 }
+
+// calculates coordinates of a point defined by a location, a bearing, and a distance
+func calcLocationForBearingDistance(lat1, lon1, bearingDeg, distanceNm float64) (lat2, lon2 float64) {
+	lat1Rad := radians(lat1)
+	lon1Rad := radians(lon1)
+	bearingRad := radians(bearingDeg)
+	distanceRad := distanceNm / (180 * 60 / math.Pi)
+
+	lat2Rad := math.Asin(math.Sin(lat1Rad)*math.Cos(distanceRad) + math.Cos(lat1Rad)*math.Sin(distanceRad)*math.Cos(bearingRad))
+	distanceLon := math.Atan2(math.Sin(bearingRad)*math.Sin(distanceRad)*math.Cos(lat1Rad), math.Cos(distanceRad)-math.Sin(lat1Rad)*math.Sin(lat2Rad))
+	lon2Rad := math.Mod(lon1Rad-distanceLon+math.Pi, 2.0*math.Pi) - math.Pi
+
+	lat2 = degrees(lat2Rad)
+	lon2 = degrees(lon2Rad)
+
+	return
+}
