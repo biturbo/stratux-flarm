@@ -48,8 +48,8 @@ install:
 	/usr/bin/fancontrol install
 	cp image/10-stratux.rules /etc/udev/rules.d/10-stratux.rules
 	cp image/99-uavionix.rules /etc/udev/rules.d/99-uavionix.rules
-	cp image/interfaces /etc/networks/interfaces
-	cp image/dhcpd.conf /etc/dhcp/dhcpd.conf
+	cp -f image/interfaces /etc/network/
+	cp -f image/dhcpd.conf /etc/dhcp/
 	rm -f /etc/init.d/stratux
 	cp __lib__systemd__system__stratux.service /lib/systemd/system/stratux.service
 	cp __root__stratux-pre-start.sh /root/stratux-pre-start.sh
