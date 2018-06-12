@@ -568,14 +568,14 @@ func calcGPSAttitude() bool {
 	//log.Printf("Delta time array is %v.\n",tempSpeedTime)
 	dt_avg, valid = mean(tempSpeedTime)
 	if valid && dt_avg > 0 {
-		if globalSettings.DEBUG {
-			log.Printf("GPS attitude: Average delta time is %.2f s (%.1f Hz)\n", dt_avg, 1/dt_avg)
-		}
+//		if globalSettings.DEBUG {
+//			log.Printf("GPS attitude: Average delta time is %.2f s (%.1f Hz)\n", dt_avg, 1/dt_avg)
+//		}
 		halfwidth = 9 * dt_avg
 		mySituation.GPSPositionSampleRate = 1 / dt_avg
 	} else {
 		if globalSettings.DEBUG {
-			log.Printf("GPS attitude: Couldn't determine sample rate\n")
+		//	log.Printf("GPS attitude: Couldn't determine sample rate\n")
 		}
 		halfwidth = 3.5
 		mySituation.GPSPositionSampleRate = 0
@@ -694,13 +694,13 @@ func calcGPSAttitude() bool {
 		mySituation.GPSTurnRate = 0
 
 		// Output format:GPSAtttiude,seconds,nmeaTime,msg_type,GS,Course,Alt,VV,filtered_GS,filtered_course,turn rate,filtered_vv,pitch, roll,load_factor
-		buf := fmt.Sprintf("GPSAttitude,%.1f,%.2f,%s,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f\n", float64(stratuxClock.Milliseconds)/1000, myGPSPerfStats[index].nmeaTime, myGPSPerfStats[index].msgType, myGPSPerfStats[index].gsf, myGPSPerfStats[index].coursef, myGPSPerfStats[index].alt, myGPSPerfStats[index].vv, v_x/1.687810, headingAvg, myGPSPerfStats[index].gpsTurnRate, v_z, myGPSPerfStats[index].gpsPitch, myGPSPerfStats[index].gpsRoll, myGPSPerfStats[index].gpsLoadFactor)
-		if globalSettings.DEBUG {
-			log.Printf("%s", buf) // FIXME. Send to sqlite log or other file?
-		}
+//		buf := fmt.Sprintf("GPSAttitude,%.1f,%.2f,%s,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f\n", float64(stratuxClock.Milliseconds)/1000, myGPSPerfStats[index].nmeaTime, myGPSPerfStats[index].msgType, myGPSPerfStats[index].gsf, myGPSPerfStats[index].coursef, myGPSPerfStats[index].alt, myGPSPerfStats[index].vv, v_x/1.687810, headingAvg, myGPSPerfStats[index].gpsTurnRate, v_z, myGPSPerfStats[index].gpsPitch, myGPSPerfStats[index].gpsRoll, myGPSPerfStats[index].gpsLoadFactor)
+//		if globalSettings.DEBUG {
+//			log.Printf("%s", buf) // FIXME. Send to sqlite log or other file?
+//		}
 		logGPSAttitude(myGPSPerfStats[index])
 		//replayLog(buf, MSGCLASS_AHRS)
-
+ 
 		return true
 	}
 
@@ -737,7 +737,7 @@ func calcGPSAttitude() bool {
 		}
 	} else { //
 		if globalSettings.DEBUG {
-			log.Printf("GPS attitude: Can't calculate turn rate with less than two points.\n")
+			//log.Printf("GPS attitude: Can't calculate turn rate with less than two points.\n")
 		}
 		return false
 	}
@@ -746,12 +746,14 @@ func calcGPSAttitude() bool {
 	slope, intercept, valid = linRegWeighted(tempHdgTime, tempHdgUnwrapped, tempRegWeights)
 
 	if !valid {
-		log.Printf("GPS attitude: Regression error calculating turn rate")
+		//log.Printf("GPS attitude: Regression error calculating turn rate")
 		return false
 	} else {
 		headingAvg = slope*float64(myGPSPerfStats[index].nmeaTime) + intercept
 		dh = slope // units are deg per sec; no conversion needed here
-		//log.Printf("Calculated heading and turn rate: %.3f degrees, %.3f deg/sec\n",headingAvg,dh)
+		if !globalSettings.DEBUG {
+			log.Printf("Calculated heading and turn rate: %.3f degrees, %.3f deg/sec\n",headingAvg,dh)
+		}
 	}
 
 	myGPSPerfStats[index].gpsTurnRate = dh
@@ -806,11 +808,11 @@ func calcGPSAttitude() bool {
 		myGPSPerfStats[index].gpsLoadFactor = 1
 	}
 
-	if globalSettings.DEBUG {
+	//if globalSettings.DEBUG {
 		// Output format:GPSAtttiude,seconds,nmeaTime,msg_type,GS,Course,Alt,VV,filtered_GS,filtered_course,turn rate,filtered_vv,pitch, roll,load_factor
-		buf := fmt.Sprintf("GPSAttitude,%.1f,%.2f,%s,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f\n", float64(stratuxClock.Milliseconds)/1000, myGPSPerfStats[index].nmeaTime, myGPSPerfStats[index].msgType, myGPSPerfStats[index].gsf, myGPSPerfStats[index].coursef, myGPSPerfStats[index].alt, myGPSPerfStats[index].vv, v_x/1.687810, headingAvg, myGPSPerfStats[index].gpsTurnRate, v_z, myGPSPerfStats[index].gpsPitch, myGPSPerfStats[index].gpsRoll, myGPSPerfStats[index].gpsLoadFactor)
-		log.Printf("%s", buf) // FIXME. Send to sqlite log or other file?
-	}
+	//	buf := fmt.Sprintf("GPSAttitude,%.1f,%.2f,%s,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f\n", float64(stratuxClock.Milliseconds)/1000, myGPSPerfStats[index].nmeaTime, myGPSPerfStats[index].msgType, myGPSPerfStats[index].gsf, myGPSPerfStats[index].coursef, myGPSPerfStats[index].alt, myGPSPerfStats[index].vv, v_x/1.687810, headingAvg, myGPSPerfStats[index].gpsTurnRate, v_z, myGPSPerfStats[index].gpsPitch, myGPSPerfStats[index].gpsRoll, myGPSPerfStats[index].gpsLoadFactor)
+	//	log.Printf("%s", buf) // FIXME. Send to sqlite log or other file?
+	//}
 
 	logGPSAttitude(myGPSPerfStats[index])
 	//replayLog(buf, MSGCLASS_AHRS)
@@ -1078,13 +1080,13 @@ func processNMEALine(l string) (sentenceUsed bool) {
 				return false
 			}
 
-			if globalSettings.DEBUG {
-				log.Printf("GPS PUBX,03 message with %d satellites is %d fields long. (Should be %d fields long)\n", satTracked, len(x), satTracked*6+3)
-			}
+//			if globalSettings.DEBUG {
+//				log.Printf("GPS PUBX,03 message with %d satellites is %d fields long. (Should be %d fields long)\n", satTracked, len(x), satTracked*6+3)
+//			}
 
 			if len(x) < (satTracked*6 + 3) { // malformed UBX,03 message that somehow passed checksum verification but is missing some of its fields
 				if globalSettings.DEBUG {
-					log.Printf("GPS PUBX,03 message is missing fields\n")
+				//	log.Printf("GPS PUBX,03 message is missing fields\n")
 				}
 				return false
 			}
@@ -1187,7 +1189,7 @@ func processNMEALine(l string) (sentenceUsed bool) {
 					thisSatellite.InSolution = false
 					//log.Printf("Satellite %s is no longer in solution and has no ephemeris - UBX,03\n", svStr) // DEBUG
 				}
-
+/* 
 				if globalSettings.DEBUG {
 					inSolnStr := " "
 					if thisSatellite.InSolution {
@@ -1195,7 +1197,7 @@ func processNMEALine(l string) (sentenceUsed bool) {
 					}
 					log.Printf("UBX: Satellite %s%s at index %d. Type = %d, NMEA-ID = %d, Elev = %d, Azimuth = %d, Cno = %d\n", inSolnStr, svStr, i, svType, sv, elev, az, cno) // remove later?
 				}
-
+ */
 				Satellites[thisSatellite.SatelliteID] = thisSatellite // Update constellation with this satellite
 				updateConstellation()
 				mySituation.muSatellite.Unlock()
@@ -1214,7 +1216,7 @@ func processNMEALine(l string) (sentenceUsed bool) {
 			}
 			if utcWeek < 1877 || utcWeek >= 32767 { // unless we're in a flying Delorean, UTC dates before 2016-JAN-01 are not valid. Check underflow condition as well.
 				if globalSettings.DEBUG {
-					log.Printf("GPS week # %v out of scope; not setting time and date\n", utcWeek)
+				//	log.Printf("GPS week # %v out of scope; not setting time and date\n", utcWeek)
 				}
 				return false
 			}
@@ -2012,7 +2014,7 @@ func gpsAttitudeSender() {
 
 			if !isGPSValid() || !calcGPSAttitude() {
 				if globalSettings.DEBUG {
-					log.Printf("Couldn't calculate GPS-based attitude statistics\n")
+			//		log.Printf("Couldn't calculate GPS-based attitude statistics\n")
 				}
 			} else {
 				mySituation.muGPSPerformance.Lock()

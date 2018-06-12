@@ -1,5 +1,5 @@
 /*
-	Copyright (c) 2015-2016 Christopher Young
+	Copyright (c) 2015-2016 Christopher Young / Serge
 	Distributable under the terms of The "BSD New" License
 	that can be found in the LICENSE file, herein included
 	as part of this header.
@@ -1106,6 +1106,7 @@ type settings struct {
 	SerialOutputs        map[string]serialConnection
 	DisplayTrafficSource bool
 	DEBUG                bool
+	NetworkFLARM		 bool
 	ReplayLog            bool
 	AHRSLog              bool
 	IMUMapping           [2]int     // Map from aircraft axis to sensor axis: accelerometer
@@ -1170,18 +1171,20 @@ var globalSettings settings
 var globalStatus status
 
 func defaultSettings() {
-	globalSettings.UAT_Enabled = true
+	globalSettings.UAT_Enabled = false
 	globalSettings.ES_Enabled = true
-	globalSettings.FLARM_Enabled = false
+	globalSettings.FLARM_Enabled = true
 	globalSettings.GPS_Enabled = true
 	globalSettings.IMU_Sensor_Enabled = true
 	globalSettings.BMP_Sensor_Enabled = true
 	//FIXME: Need to change format below.
 	globalSettings.NetworkOutputs = []networkConnection{
 		{Conn: nil, Ip: "", Port: 4000, Capability: NETWORK_GDL90_STANDARD | NETWORK_AHRS_GDL90},
+		//		{Conn: nil, Ip: "", Port: 10110, Capability: NETWORK_FLARM_NMEA}, // UDP output on IANA-assigned NMEA port. Compatible with XCSoar
 		//		{Conn: nil, Ip: "", Port: 49002, Capability: NETWORK_AHRS_FFSIM},
 	}
 	globalSettings.DEBUG = false
+	globalSettings.NetworkFLARM = true         // default to true for the FLARM test branch; disable if committing to master	
 	globalSettings.DisplayTrafficSource = false
 	globalSettings.ReplayLog = false //TODO: 'true' for debug builds.
 	globalSettings.AHRSLog = false
@@ -1574,6 +1577,9 @@ func main() {
 	go cpuTempMonitor(func(cpuTemp float32) {
 		globalStatus.CPUTemp = cpuTemp
 	})
+
+	// Initialize the FLARM (out) network handler.
+	tcpNMEAListener()
 
 	reader := bufio.NewReader(os.Stdin)
 

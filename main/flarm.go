@@ -377,7 +377,8 @@ func processAprsData(aprsData string) {
 		}
 
 		ti.Icao_addr = data.Address
-		ti.Tail = strings.ToUpper(fmt.Sprintf("F%s%s", decodeFLARMAircraftType(data.AircraftType), strconv.FormatInt(int64(data.Address), 16)))
+//		ti.Tail = strings.ToUpper(fmt.Sprintf("F%s%s", decodeFLARMAircraftType(data.AircraftType), strconv.FormatInt(int64(data.Address), 16)))
+		ti.Tail = strings.ToUpper(fmt.Sprintf("F-%s", strconv.FormatInt(int64(data.Address), 16)))
 		ti.Last_source = TRAFFIC_SOURCE_FLARM
 
 		// set altitude
