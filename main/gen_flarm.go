@@ -274,7 +274,7 @@ func makeFlarmPFLAAString(ti TrafficInfo) (msg string, valid bool) {
 // Set the FLARM aircraft ALARM. 
 // syntax: PFLAU,<RX>,<TX>,<GPS>,<Power>,<AlarmLevel>,<RelativeBearing>,<AlarmType>,<RelativeVertical>,<RelativeDistance>,<ID>
 
-	if alarmLevel > 0 && isGPSValid() && mySituation.GPSFixQuality > 0 {     
+	if alarmLevel > 0 && isGPSValid() && mySituation.GPSFixQuality > 0 && !modec_valid {     
 		if globalSettings.DEBUG {
 		   log.Printf("FLARM Alarm: Traffic %X, AlarmType %d, AlarmLevel %d\n", ti.Icao_addr, alarmType, alarmLevel) 
 		}  
@@ -304,7 +304,11 @@ func makeFlarmPFLAAString(ti TrafficInfo) (msg string, valid bool) {
 	}  
     
   sendNetFLARM(msgPFLAU)
-  log.Printf(msgPFLAU) 
+  
+	if globalSettings.DEBUG {
+		  log.Printf(msgPFLAU) 
+	}	
+
 	valid = true
 	return
 }

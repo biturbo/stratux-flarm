@@ -295,11 +295,11 @@ func sendTrafficUpdates() {
 				
 				/* FLARM NMEA message handling */
 				thisMsgFLARM, validFLARM := makeFlarmPFLAAString(ti)
-				log.Printf(thisMsgFLARM)
-				
-//				if globalSettings.DEBUG {
+			
+				if globalSettings.DEBUG {
+				    log.Printf(thisMsgFLARM)
 //					log.Printf("%X => Pos valid (true) = %v \n", ti.Icao_addr, ti.Position_valid)
-//				}
+				}
 				
 				if validFLARM {
 					//sendNetFLARM(thisMsgFLARM)

@@ -568,14 +568,14 @@ func calcGPSAttitude() bool {
 	//log.Printf("Delta time array is %v.\n",tempSpeedTime)
 	dt_avg, valid = mean(tempSpeedTime)
 	if valid && dt_avg > 0 {
-//		if globalSettings.DEBUG {
-//			log.Printf("GPS attitude: Average delta time is %.2f s (%.1f Hz)\n", dt_avg, 1/dt_avg)
-//		}
+		if globalSettings.DEBUG {
+			log.Printf("GPS attitude: Average delta time is %.2f s (%.1f Hz)\n", dt_avg, 1/dt_avg)
+		}
 		halfwidth = 9 * dt_avg
 		mySituation.GPSPositionSampleRate = 1 / dt_avg
 	} else {
 		if globalSettings.DEBUG {
-		//	log.Printf("GPS attitude: Couldn't determine sample rate\n")
+			log.Printf("GPS attitude: Couldn't determine sample rate\n")
 		}
 		halfwidth = 3.5
 		mySituation.GPSPositionSampleRate = 0
@@ -737,7 +737,7 @@ func calcGPSAttitude() bool {
 		}
 	} else { //
 		if globalSettings.DEBUG {
-			//log.Printf("GPS attitude: Can't calculate turn rate with less than two points.\n")
+			log.Printf("GPS attitude: Can't calculate turn rate with less than two points.\n")
 		}
 		return false
 	}
