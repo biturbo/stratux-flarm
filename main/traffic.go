@@ -253,8 +253,11 @@ func sendTrafficUpdates() {
 				msgs[cur_n] = append(msgs[cur_n], makeTrafficReportMsg(ti)...)
 				
 				/* FLARM NMEA message handling */
+				
 				thisMsgFLARM, validFLARM := makeFlarmPFLAAString(ti)
-				log.Printf(thisMsgFLARM)
+				if globalSettings.DEBUG {
+					log.Printf(thisMsgFLARM)
+				}
 						
 				if validFLARM {
 					//sendNetFLARM(thisMsgFLARM)
