@@ -63,7 +63,7 @@ type Dump1090TermMessage struct {
 func (e *ES) read() {
 	defer e.wg.Done()
 	log.Println("Entered ES read() ...")
-	cmd := exec.Command("/usr/bin/dump1090", "--oversample", "--net", "--device-index", strconv.Itoa(e.indexID), "--ppm", strconv.Itoa(e.ppm))
+	cmd := exec.Command("/usr/bin/dump1090", "--modeac", "--net", "--device-index", strconv.Itoa(e.indexID), "--ppm", strconv.Itoa(e.ppm))
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
@@ -507,7 +507,7 @@ type regexFLARM regexp.Regexp
 
 var rUAT = (*regexUAT)(reCompile("str?a?t?u?x:978"))
 var rES = (*regexES)(reCompile("str?a?t?u?x:1090"))
-var rFLARM = (*regexES)(reCompile("str?a?t?u?x:868"))
+var rFLARM = (*regexFLARM)(reCompile("str?a?t?u?x:868"))
 
 func (r *regexUAT) hasID(serial string) bool {
 	if r == nil {

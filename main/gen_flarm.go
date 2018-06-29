@@ -147,14 +147,18 @@ func makeFlarmPFLAAString(ti TrafficInfo) (msg string, valid bool) {
 		
 	} else if alt_valid && !ti.Position_valid && !ti.Speed_valid && !track_valid && isGPSValid() && mySituation.GPSFixQuality > 0 {
 
-		if (ti.SignalLevel > -10) { // 926 m = 0.5 NM; 
-		relativeNorth = 925
-		} else if (ti.SignalLevel > -15) { // 1852 m = 1.0 NM; 
-		relativeNorth = 1851
-		} else if (ti.SignalLevel > -18) { // 5100 m = 2.0 NM; 
-		relativeNorth = 5099
-		} else if (ti.SignalLevel > -20) { // 9700 m = 5.0 NM; 
-		relativeNorth = 9699
+		if (ti.SignalLevel > -5) { // 463 m = 0.25 NM; 
+		relativeNorth = 463
+		} else if (ti.SignalLevel > -10) { // 3704 m = 2.0 NM; 
+		relativeNorth = 3704
+		} else if (ti.SignalLevel > -15) { // 7408 m = 4.0 NM; 
+		relativeNorth = 7408
+		} else if (ti.SignalLevel > -18) { // 11112 m = 6.0 NM; 
+		relativeNorth = 11112
+		} else if (ti.SignalLevel > -20) { // 14816 m = 8.0 NM; 
+		relativeNorth = 14816
+		} else if (ti.SignalLevel > -25) { // 29632 m = 16.0 NM; 
+		relativeNorth = 29632
 		}
 		
 		rEast = ""	
@@ -216,13 +220,13 @@ func makeFlarmPFLAAString(ti TrafficInfo) (msg string, valid bool) {
 	if (dist < 926) && InBetween(relativeVertical, -304, 304) { // 926 m = 0.5 NM; 304 = +/-1000ft
 		alarmLevel = 3
 		alarmType = 2
-		} else if (dist < 1852) && InBetween(relativeVertical, -304, 304) { // 1852 m = 1.0 NM; 304 = +/-1000ft	
+		} else if (dist < 4000) && InBetween(relativeVertical, -304, 304) { // 3704 m = 2.0 NM; 304 = +/-1000ft	
 		alarmLevel = 3
 		alarmType = 2
-		} else if (dist < 5100) && InBetween(relativeVertical, -304, 304) { // 5100 m = 2.0 NM; 304 = +/-1000ft
+		} else if (dist < 8000) && InBetween(relativeVertical, -304, 304) { // 7408 m = 4.0 NM; 304 = +/-1000ft
 		alarmLevel = 2
 		alarmType = 2
-		} else if (dist < 9700) && InBetween(relativeVertical, -304, 304) { // 9700 m = 5.0 NM; 304 = +/-1000ft
+		} else if (dist < 12000) && InBetween(relativeVertical, -304, 304) { // 11112 m = 6.0 NM; 304 = +/-1000ft
 		alarmLevel = 1
 		alarmType = 2
 		} else {
