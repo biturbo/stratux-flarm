@@ -1,0 +1,621 @@
+<html>
+<head>
+    <title>Stratux AHRS Diagnostics</title>
+    <style>
+        ul    { list-style: none; }
+
+        table   {
+            /*display: inline;*/
+            text-align: right;
+            margin-bottom: 2em;
+        }
+
+        th {
+            width: 5em;
+        }
+
+        body {
+            font: 10px sans-serif;
+        }
+
+        .earth  {
+            stroke-width: 0;
+            fill: Brown;
+        }
+
+        .horizon {
+            stroke-width: 3;
+            color: White;
+        }
+
+        .sky  {
+            stroke-width: 0;
+            fill: SkyBlue;
+        }
+
+        .wings {
+            stroke-width: 5;
+            color: Yellow;
+        }
+
+        .markings {
+            stroke-width: 3;
+            color: white;
+        }
+
+        .line {
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .line.x {
+            stroke: Red;
+        }
+
+        .line.y {
+            stroke: Green;
+        }
+        .line.z {
+            stroke: Blue;
+        }
+
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: black;
+            shape-rendering: crispEdges;
+        }
+        svg {
+            font: 10px sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+<table>
+    <tr>
+        <th>T</th>
+        <th>Pitch</th>
+        <th>Roll</th>
+        <th>Heading</th>
+    </tr>
+    <tr>
+        <td id="T">0</td>
+        <td id="Pitch">0</td>
+        <td id="Roll">0</td>
+        <td id="Heading">0</td>
+    </tr>
+</table>
+
+<table>
+    <tr>
+        <th>UValid</th>
+        <th>WValid</th>
+        <th>SValid</th>
+        <th>MValid</th>
+    </tr>
+    <tr>
+        <td id="UValid">0</td>
+        <td id="WValid">0</td>
+        <td id="SValid">0</td>
+        <td id="MValid">0</td>
+    </tr>
+</table>
+
+<table>
+    <tr>
+        <th></th>
+        <th>U</th>
+        <th>dU</th>
+        <th>V</th>
+        <th>dV</th>
+        <th>S</th>
+        <th>W</th>
+    </tr>
+    <tr>
+        <th>1</th>
+        <td id="U1">0</td>
+        <td id="DU1">0</td>
+        <td id="V1">0</td>
+        <td id="DV1">0</td>
+        <td id="S1">0</td>
+        <td id="W1">0</td>
+    </tr>
+    <tr>
+        <th>2</th>
+        <td id="U2">0</td>
+        <td id="DU2">0</td>
+        <td id="V2">0</td>
+        <td id="DV2">0</td>
+        <td id="S2">0</td>
+        <td id="W2">0</td>
+    </tr>
+    <tr>
+        <th>3</th>
+        <td id="U3">0</td>
+        <td id="DU3">0</td>
+        <td id="V3">0</td>
+        <td id="DV3">0</td>
+        <td id="S3">0</td>
+        <td id="W3">0</td>
+    </tr>
+</table>
+
+<table>
+    <tr>
+        <th></th>
+        <th>Z</th>
+        <th>dZ</th>
+        <th>C</th>
+        <th>dC</th>
+        <th>A</th>
+    </tr>
+    <tr>
+        <th>1</th>
+        <td id="Z1">0</td>
+        <td id="DZ1">0</td>
+        <td id="C1">0</td>
+        <td id="DC1">0</td>
+        <td id="A1">0</td>
+    </tr>
+    <tr>
+        <th>2</th>
+        <td id="Z2">0</td>
+        <td id="DZ2">0</td>
+        <td id="C2">0</td>
+        <td id="DC2">0</td>
+        <td id="A2">0</td>
+    </tr>
+    <tr>
+        <th>3</th>
+        <td id="Z3">0</td>
+        <td id="DZ3">0</td>
+        <td id="C3">0</td>
+        <td id="DC3">0</td>
+        <td id="A3">0</td>
+    </tr>
+</table>
+
+<table>
+    <tr>
+        <th></th>
+        <th>E</th>
+        <th>dE</th>
+        <th>F</th>
+        <th>dF</th>
+    </tr>
+    <tr>
+        <th>0</th>
+        <td id="E0">0</td>
+        <td id="DE0">0</td>
+        <td id="F0">0</td>
+        <td id="DF0">0</td>
+    </tr>
+    <tr>
+        <th>1</th>
+        <td id="E1">0</td>
+        <td id="DE1">0</td>
+        <td id="F1">0</td>
+        <td id="DF1">0</td>
+    </tr>
+    <tr>
+        <th>2</th>
+        <td id="E2">0</td>
+        <td id="DE2">0</td>
+        <td id="F2">0</td>
+        <td id="DF2">0</td>
+    </tr>
+    <tr>
+        <th>3</th>
+        <td id="E3">0</td>
+        <td id="DE3">0</td>
+        <td id="F3">0</td>
+        <td id="DF3">0</td>
+    </tr>
+</table>
+
+
+<table>
+    <tr>
+        <th></th>
+        <th>H</th>
+        <th>dH</th>
+        <th>D</th>
+        <th>dD</th>
+        <th>B</th>
+    </tr>
+    <tr>
+        <th>1</th>
+        <td id="H1">0</td>
+        <td id="DH1">0</td>
+        <td id="D1">0</td>
+        <td id="DD1">0</td>
+        <td id="B1">0</td>
+    </tr>
+    <tr>
+        <th>2</th>
+        <td id="H2">0</td>
+        <td id="DH2">0</td>
+        <td id="D2">0</td>
+        <td id="DD2">0</td>
+        <td id="B2">0</td>
+    </tr>
+    <tr>
+        <th>3</th>
+        <td id="H3">0</td>
+        <td id="DH3">0</td>
+        <td id="D3">0</td>
+        <td id="DD3">0</td>
+        <td id="B3">0</td>
+    </tr>
+</table>
+
+<table>
+    <tr>
+        <th></th>
+        <th>N</th>
+        <th>dN</th>
+        <th>L</th>
+        <th>dL</th>
+        <th>M</th>
+    </tr>
+    <tr>
+        <th>1</th>
+        <td id="N1">0</td>
+        <td id="DN1">0</td>
+        <td id="L1">0</td>
+        <td id="DL1">0</td>
+        <td id="M1">0</td>
+    </tr>
+    <tr>
+        <th>2</th>
+        <td id="N2">0</td>
+        <td id="DN2">0</td>
+        <td id="L2">0</td>
+        <td id="DL2">0</td>
+        <td id="M2">0</td>
+    </tr>
+    <tr>
+        <th>3</th>
+        <td id="N3">0</td>
+        <td id="DN3">0</td>
+        <td id="L3">0</td>
+        <td id="DL3">0</td>
+        <td id="M3">0</td>
+    </tr>
+</table>
+
+<div id="ai"></div>
+<div id="k_airspeed"></div>
+<div id="k_windspeed"></div>
+<div id="m_groundspeed"></div>
+<div id="k_accel"></div>
+<div id="k_accel_cal"></div>
+<div id="m_accel"></div>
+<div id="k_gyro"></div>
+<div id="k_gyro_cal"></div>
+<div id="m_gyro"></div>
+<div id="k_mag"></div>
+<div id="k_mag_cal"></div>
+<div id="m_mag"></div>
+<ul id="messages"></ul>
+<script src="d3.min.js" charset="utf-8"></script>
+<script>
+
+    const t0 = Date.now() / 1000;
+    const DEG = Math.PI/180;
+
+    var width = 400, height=400;
+    var margin = {top: 20, right: 2, bottom: 20, left: 40};
+
+    var updateTable = (function() {
+        function formatVar(k, v) {
+            var vv, fmt;
+            switch (k.slice(0,-1)) {
+                case "":
+                    fmt = ".2f";
+                    vv = (v - t0);
+                    break;
+                case "Z":
+                case "A":
+                case "E":
+                case "F":
+                    vv = v;
+                    fmt = "+.3f";
+                    break;
+                case "DZ":
+                case "DE":
+                case "DF":
+                    if (v > 0) {
+                        vv = Math.sqrt(v);
+                    } else {
+                        vv = 0;
+                    }
+                    fmt = ".3f";
+                    break;
+                case "DH":
+                    if (v > 0) {
+                        vv = Math.sqrt(v);
+                    } else {
+                        vv = 0;
+                    }
+                    fmt = ".4f";
+                    break;
+                case "H":
+                case "B":
+                    vv = v;
+                    fmt = "+.4f";
+                    break;
+                case "DC":
+                case "DD":
+                    if (v > 0) {
+                        vv = Math.sqrt(v);
+                    } else {
+                        vv = 0;
+                    }
+                    fmt = ".5f";
+                    break;
+                case "C":
+                case "D":
+                    vv = v;
+                    fmt = "+.5f";
+                    break;
+                case"UVali":
+                case"WVali":
+                case"SVali":
+                case"MVali":
+                    if (v) {
+                        vv = 1;
+                    } else {
+                        vv = 0;
+                    }
+                    fmt = "1d";
+                    break;
+                case "DU":
+                case "DV":
+                case "DN":
+                case "DL":
+                    if (v > 0) {
+                        vv = Math.sqrt(v);
+                    } else {
+                        vv = 0;
+                    }
+                    fmt = ".0f";
+                    break;
+                default:
+                    vv = v;
+                    fmt = "+.0f";
+            }
+            return d3.format(fmt)(vv);
+        }
+
+        return function(data) {
+            for (var f in data) {
+                d3.select("#"+f).text(formatVar(f, data[f]));
+            }
+        }
+    })();
+
+    function updateMessageList(data) {
+//        var messages = document.getElementById("messages");
+//            var entry = document.createElement("li");
+//            entry.appendChild(document.createTextNode(data));
+//            messages.appendChild(entry);
+    }
+
+    // Draw AI
+    var updateAI = (function() {
+        var D0 = [{theta: 0, phi: 0, side: -1}, {theta: 0, phi: 0, side: +1}];
+
+        function x(d) {
+            return width * (d.side + 1) / 2
+        }
+
+        function y(d) {
+            return height * (90 + d.theta) / 180 - d.side * width / 2 * Math.tan(d.phi * DEG)
+        }
+
+        var svg = d3.select("#ai").append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .append("g");
+
+        var sky_gen = d3.svg.area()
+                .x(x)
+                .y0(y)
+                .y1(0);
+
+        var horizon_gen = d3.svg.line()
+                .x(x)
+                .y(y);
+
+        var earth_gen = d3.svg.area()
+                .x(x)
+                .y0(y)
+                .y1(height);
+
+        var sky = svg.append("path")
+                .attr("class", "sky")
+                .datum(D0)
+                .attr("d", sky_gen);
+
+        var earth = svg.append("path")
+                .attr("class", "earth")
+                .datum(D0)
+                .attr("d", earth_gen);
+
+        var horizon = svg.append("path")
+                .attr("class", "horizon")
+                .datum(D0)
+                .attr("d", horizon_gen);
+
+        return function(data) {
+            D0[0].theta = data.Pitch;
+            D0[1].theta = data.Pitch;
+            D0[0].phi = data.Roll;
+            D0[1].phi = data.Roll;
+            sky.attr("d", sky_gen);
+            earth.attr("d", earth_gen);
+            horizon.attr("d", horizon_gen);
+        }
+
+    })();
+
+    function makeRollingPlot(el, ylim, v) {
+        const TMAX = 10;
+
+        var D0 = d3.range(TMAX*10).map(function() { return 0; });
+
+        var x = d3.scale.linear()
+                .domain([0, TMAX])
+                .range([0, width-margin.left-margin.right]);
+
+        var y = d3.scale.linear()
+                .domain([-ylim, ylim])
+                .range([height-margin.top-margin.bottom, 0]);
+
+        var xAxis = d3.svg.axis()
+                .scale(x)
+                .orient("bottom");
+
+        var yAxis = d3.svg.axis()
+                .scale(y)
+                .orient("left");
+
+        var getLine = function(dim) {
+            return d3.svg.line()
+                    .x(function (d, i) {
+                        return x(i / 10);
+                    })
+                    .y(function (d, i) {
+                        if (d.A3) {
+                            return y(d[v + dim]);
+                        } else {
+                            return y(0);
+                        }
+                    });
+        };
+
+        var svg = d3.select("#"+el)
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        svg.append("defs").append("clipPath")
+                .attr("id", el+"Clip")
+                .append("rect")
+                .attr("width", width-margin.left-margin.right)
+                .attr("height", height-margin.top-margin.bottom);
+
+        svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate(0," + y(0) + ")")
+                .call(xAxis);
+
+        svg.append("g")
+                .attr("class", "y axis")
+                .call(yAxis)
+                .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text(el);
+
+        var xpath = svg.append("g")
+                .attr("clip-path", "url(#"+el+"Clip)")
+                .append("path")
+                .attr("class", "line x")
+                .datum(D0)
+                .attr("d", getLine("1"));
+
+        var ypath = svg.append("g")
+                .attr("clip-path", "url(#"+el+"Clip)")
+                .append("path")
+                .attr("class", "line y")
+                .datum(D0)
+                .attr("d", getLine("2"));
+
+        var zpath = svg.append("g")
+                .attr("clip-path", "url(#"+el+"Clip)")
+                .append("path")
+                .attr("class", "line z")
+                .datum(D0)
+                .attr("d", getLine("3"));
+
+        return function(data) {
+            D0.push(data);
+            xpath.attr("d", getLine("1"))
+                    .attr("transform", null)
+                    .transition()
+                    .duration(100)
+                    .ease("linear")
+                    .attr("transform", "translate(" + x(-0.1) + ",0)");
+            ypath.attr("d", getLine("2"))
+                    .attr("transform", null)
+                    .transition()
+                    .duration(100)
+                    .ease("linear")
+                    .attr("transform", "translate(" + x(-0.1) + ",0)");
+            zpath.attr("d", getLine("3"))
+                    .attr("transform", null)
+                    .transition()
+                    .duration(100)
+                    .ease("linear")
+                    .attr("transform", "translate(" + x(-0.1) + ",0)");
+            D0.shift();
+        }
+
+    }
+
+    var     updateAirspeed = makeRollingPlot("k_airspeed", 400, "U"),
+            updateWindspeed = makeRollingPlot("k_windspeed", 150, "V"),
+            updateGroundspeed = makeRollingPlot("m_groundspeed", 500, "W"),
+            updateKAccel = makeRollingPlot("k_accel", 4, "Z"),
+            updateKAccelCal = makeRollingPlot("k_accel_cal", 0.4, "C"),
+            updateMAccel = makeRollingPlot("m_accel", 4, "A"),
+            updateKGyro = makeRollingPlot("k_gyro", 50, "H"),
+            updateKGyroCal = makeRollingPlot("k_gyro_cal", 5, "D"),
+            updateMGyro = makeRollingPlot("m_gyro", 50, "B"),
+            updateKMag = makeRollingPlot("k_mag", 4000, "N"), // 9830
+            updateKMagCal = makeRollingPlot("k_mag_cal", 400, "L"),
+            updateMMag = makeRollingPlot("m_mag", 4000, "M"); // 9830
+
+    if (!window["WebSocket"]) {
+        alert("Error: Your browser does not support web sockets.")
+    } else {
+        function reconnectLoop() {
+            var socket = new WebSocket("ws://{{.Host}}/ahrsweb");
+            socket.onclose = function () {
+//            alert("Connection has been closed.");
+                console.log("Socket has been closed.  Trying to reconnect.");
+                setTimeout(function () {
+                    reconnectLoop()
+                }, 1000);
+            };
+            socket.onmessage = function (e) {
+                var msg = JSON.parse(e.data);
+                updateTable(msg);
+                updateMessageList(msg);
+                updateAI(msg);
+                updateAirspeed(msg);
+                updateWindspeed(msg);
+                updateGroundspeed(msg);
+                updateKAccel(msg);
+                updateKAccelCal(msg);
+                updateMAccel(msg);
+                updateKGyro(msg);
+                updateKGyroCal(msg);
+                updateMGyro(msg);
+                updateKMag(msg);
+                updateKMagCal(msg);
+                updateMMag(msg);
+            };
+        }
+        reconnectLoop()
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Magnetometer Calibration</title>
+    <style>
+        ul    { list-style: none; }
+
+        table   {
+            /*display: inline;*/
+            text-align: right;
+            margin-bottom: 2em;
+        }
+
+        th {
+            width: 5em;
+        }
+
+        body {
+            font: 10px sans-serif;
+        }
+
+        .center {
+            fill: Black;
+        }
+
+        .ellipse {
+            stroke: Black;
+            stroke-width: 1;
+            fill: None;
+        }
+
+        .pointer {
+            stroke: Black;
+            stroke-width: 2;
+        }
+
+        .line {
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .line.x {
+            stroke: Red;
+            color: Red;
+        }
+
+        .line.y {
+            stroke: Green;
+            color: Green;
+        }
+        .line.z {
+            stroke: Blue;
+            color: Blue;
+        }
+
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: black;
+            shape-rendering: crispEdges;
+        }
+        svg {
+            font: 10px sans-serif;
+        }
+
+        #connected {
+            stroke: black;
+            height: 1em;
+            width: 7em;
+            text-align: center;
+            border: black;
+            border-style: solid;
+        }
+        #connected.connected {
+            background-color: lawngreen;
+        }
+        #connected.disconnected {
+            background-color: red;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div id="connected" class="disconnected"></div>
+<table>
+    <tr>
+        <th></th>
+        <th class="line x">M1</th>
+        <th class="line y">M2</th>
+        <th class="line z">M3</th>
+        <th>HDG</th>
+        <th>DIP</th>
+        <th>Raw HDG</th>
+        <th>Raw DIP</th>
+    </tr>
+    <tr>
+        <td>Values</td>
+        <td id="M1">0</td>
+        <td id="M2">0</td>
+        <td id="M3">0</td>
+        <td id="HDG">0</td>
+        <td id="DIP">0</td>
+        <td id="HDGRaw">0</td>
+        <td id="DIPRaw">0</td>
+    </tr>
+    <tr>
+        <td>Offset</td>
+        <td id="O1">0</td>
+        <td id="O2">0</td>
+        <td id="O3">0</td>
+    </tr>
+    <tr>
+        <td>Scale</td>
+        <td id="S1">0</td>
+        <td id="S2">0</td>
+        <td id="S3">0</td>
+    </tr>
+</table>
+
+<div>
+    <span id="m_mag"></span>
+    <span id="mm_mag"></span>
+</div>
+<div>
+    <span id="m1m2"></span>
+    <span id="m2m3"></span>
+    <span id="m3m1"></span>
+</div>
+<script src="d3.min.js" charset="utf-8"></script>
+<script src="magkal.js" charset="utf-8"></script>
+<script charset="utf-8">
+    let updateMMag = makeRollingPlot("m_mag", "M"),
+            updateMMMag = makeRollingPlot("mm_mag", "MM"),
+            updateMagXY = updateMagXS(1, 2),
+            updateMagXZ = updateMagXS(3, 1),
+            updateMagYZ = updateMagXS(2, 3),
+            setConnectedIndicator = connectedIndicator(document.getElementById("connected")),
+            socket,
+            msgCount = 0;
+
+    function connectWS(host) {
+        console.log("Socket is closed.  Trying to connect.");
+        let socket = new WebSocket("ws://"+host+"/websocket"),
+                msg, hdgDip, hdgDipRaw;
+
+        socket.onopen = function() {
+            setConnectedIndicator(true);
+            console.log("Websocket opened")
+        };
+
+        socket.onclose = function() {
+            setConnectedIndicator(false);
+            console.log("Websocket closed");
+        };
+
+        socket.onmessage = function(e) {
+            msgCount++;
+            msg = JSON.parse(e.data);
+            hdgDipRaw = calcHdgDip(msg['M1'], msg['M2'], msg['M3']);
+            msg['HDGRaw'] = hdgDipRaw.hdg;
+            msg['DIPRaw'] = hdgDipRaw.dip;
+            msg['MM1'] = (msg['M1']-msg['O1'])/msg['S1'];
+            msg['MM2'] = (msg['M2']-msg['O2'])/msg['S2'];
+            msg['MM3'] = (msg['M3']-msg['O3'])/msg['S3'];
+            hdgDip = calcHdgDip(msg['MM1'], msg['MM2'], msg['MM3']);
+            msg['HDG'] = hdgDip.hdg;
+            msg['DIP'] = hdgDip.dip;
+            updateMMag(msg);
+            updateMMMag(msg);
+            updateMagXY(msg);
+            updateMagXZ(msg);
+            updateMagYZ(msg);
+            updateTable(msg);
+        };
+        return socket;
+    }
+
+    setConnectedIndicator(false);
+    if (!window["WebSocket"]) {
+        alert("Error: Your browser does not support web sockets.")
+    } else {
+        socket = connectWS({{.Host}});
+
+        setInterval(function() {
+            if (msgCount === 0) {
+                socket.close();
+                socket = connectWS({{.Host}});
+            }
+            msgCount = 0;
+        }, 10000)
+    }
+</script>
+</body>
+</html>
