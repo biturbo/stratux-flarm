@@ -1,10 +1,10 @@
 /*
-	Copyright (c) 2015-2016 Christopher Young
+	Copyright (c) 2015-2016 Christopher Young / Serge Guex v1
 	Distributable under the terms of The "BSD New" License
 	that can be found in the LICENSE file, herein included
 	as part of this header.
 
-	sdr.go: SDR monitoring, SDR management, data input from UAT/1090ES channels.
+	sdr.go: SDR monitoring, SDR management, data input from UAT/1090ES/FLARM channels.
 */
 
 package main
