@@ -877,7 +877,9 @@ func processNMEALine(l string) (sentenceUsed bool) {
 
 	l_valid, validNMEAcs := validateNMEAChecksum(l)
 	if !validNMEAcs {
-		log.Printf("GPS error. Invalid NMEA string: %s\n", l_valid) // remove log message once validation complete
+			if globalSettings.DEBUG {
+				log.Printf("GPS error. Invalid NMEA string: %s\n", l_valid) // remove log message once validation complete
+			}	
 		return false
 	}
 	x := strings.Split(l_valid, ",")
