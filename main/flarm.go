@@ -199,7 +199,9 @@ func replaceFlarmDecodingProcess(lonDeg float32, latDeg float32, oldDecodingProc
 		for {
 			line, err := bufio.NewReader(decoderOutput).ReadString('\n')
 			if err == nil {
-				log.Println("FLARM: ogn-decode stdout:", strings.TrimSpace(line))
+				if globalSettings.DEBUG {
+					log.Println("FLARM: ogn-decode stdout:", strings.TrimSpace(line)) 
+				}
 			} else {
 				return
 			}

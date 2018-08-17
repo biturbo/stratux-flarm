@@ -751,7 +751,7 @@ func calcGPSAttitude() bool {
 	} else {
 		headingAvg = slope*float64(myGPSPerfStats[index].nmeaTime) + intercept
 		dh = slope // units are deg per sec; no conversion needed here
-		if !globalSettings.DEBUG {
+		if globalSettings.DEBUG {
 			log.Printf("Calculated heading and turn rate: %.3f degrees, %.3f deg/sec\n",headingAvg,dh)
 		}
 	}
