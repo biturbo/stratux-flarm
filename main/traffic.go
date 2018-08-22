@@ -1280,9 +1280,13 @@ func icao2reg(icao_addr uint32) (string, bool) {
 		nation = "US"
 	} else if (icao_addr >= 0xC00001) && (icao_addr <= 0xC3FFFF) {
 		nation = "CA"
+	} else if (icao_addr >= 0x4B0000) && (icao_addr <= 0X4B7FFF) {
+		nation = "CH"
+	} else if (icao_addr >= 0x7C0000) && (icao_addr <= 0x7FFFFF) {
+		nation = "AU"
 	} else {
 		//TODO: future national decoding.
-		return "NON-NA", false
+		return "OTHER", false
 	}
 
 	if nation == "CA" { // Canada decoding
@@ -1297,22 +1301,67 @@ func icao2reg(icao_addr uint32) (string, bool) {
 
 		// Fifth letter
 		e := serial % 26
-
 		// Fourth letter
 		d := (serial / 26) % 26
-
 		// Third letter
 		c := (serial / 676) % 26 // 676 == 26*26
-
 		// Second letter
 		b := (serial / 17576) % 26 // 17576 == 26*26*26
-
 		b_str := "FGI"
 
 		//fmt.Printf("B = %d, C = %d, D = %d, E = %d\n",b,c,d,e)
 		tail = fmt.Sprintf("C-%c%c%c%c", b_str[b], c+65, d+65, e+65)
 	}
 
+	if nation == "AU" { // Australia decoding
+ 		nationalOffset := uint32(0x7C0000)
+		offset := (icao_addr - nationalOffset)
+		i1 := offset / 1296
+		offset2 := offset % 1296
+		i2 := offset2 / 36
+		offset3 := offset2 % 36
+		i3 := offset3
+ 		var a_char, b_char, c_char string
+ 		a_char = fmt.Sprintf("%c", i1+65)
+		b_char = fmt.Sprintf("%c", i2+65)
+		c_char = fmt.Sprintf("%c", i3+65)
+ 		if i1 < 0 || i1 > 25 || i2 < 0 || i2 > 25 || i3 < 0 || i3 > 25 {
+			return "OTHER", false
+		}
+ 		tail = "VH-" + a_char + b_char + c_char
+	}
+
+	if nation == "CH" { // CH decoding
+		// Switzerland Mil(SU) = 4B7000-4B7FFF
+		// Switzerland(CH) = 4B0000-4B7FFF
+		// First, discard addresses that are not assigned to aircraft on the civil registry
+		if icao_addr > 0x4B7000 {
+			//log.Printf("%X is a Swiss aircraft, but not a civil registration.\n", icao_addr)
+			return "CH-MIL", false
+		}
+		
+		// TEST 4B3944 = HB-VRW
+/* 		icao_addr = 0x4B3944
+		
+		nationalOffset := uint32(0x4B0000)
+		offset := (icao_addr - nationalOffset)
+		i1 := offset / 1296
+		offset2 := offset % 1296
+		i2 := offset2 / 36
+		offset3 := offset2 % 36
+		i3 := offset3
+ 		var a_char, b_char, c_char string
+ 		a_char = fmt.Sprintf("%c", i1+65)
+		b_char = fmt.Sprintf("%c", i2+65)
+		c_char = fmt.Sprintf("%c", i3+65)
+ 		if i1 < 0 || i1 > 25 || i2 < 0 || i2 > 25 || i3 < 0 || i3 > 25 {
+			return "OTHER", false
+		}		
+		tail = "HB-"  + a_char + b_char + c_char
+			log.Printf("%X is a Swiss aircraft, civil registration.\n", icao_addr) */
+	}
+	
+		
 	if nation == "US" { // FAA decoding
 		// First, discard addresses that are not assigned to aircraft on the civil registry
 		if icao_addr > 0xADF7C7 {
