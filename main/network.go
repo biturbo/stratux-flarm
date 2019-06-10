@@ -1,5 +1,5 @@
 /*
-	Copyright (c) 2015-2016 Christopher Young / Serge Guex v1
+	Copyright (c) 2015-2016 Christopher Young
 	Distributable under the terms of The "BSD New" License
 	that can be found in the LICENSE file, herein included
 	as part of this header.
@@ -69,7 +69,6 @@ const (
 	NETWORK_GDL90_STANDARD = 1
 	NETWORK_AHRS_FFSIM     = 2
 	NETWORK_AHRS_GDL90     = 4
-	NETWORK_FLARM_NMEA     = 8
 	dhcp_lease_file        = "/var/lib/dhcp/dhcpd.leases"
 	dhcp_lease_dir         = "/var/lib/dhcp"
 	extra_hosts_file       = "/etc/stratux-static-hosts.conf"
@@ -171,16 +170,8 @@ func isThrottled(k string) bool {
 func sendToAllConnectedClients(msg networkMessage) {
 	if (msg.msgType & NETWORK_GDL90_STANDARD) != 0 {
 		// It's a GDL90 message. Send to serial output channel (which may or may not cause something to happen).
-		//serialOutputChan <- msg.msg
-		//networkGDL90Chan <- msg.msg
-		
-   		if !globalSettings.NetworkFLARM {
-			serialOutputChan <- msg.msg // don't pollute the serial port with GDL90 messages if FLARM is active
-		}
-		networkGDL90Chan <- msg.msg
-   
-	} else if msg.msgType & NETWORK_FLARM_NMEA != 0 {
 		serialOutputChan <- msg.msg
+		networkGDL90Chan <- msg.msg
 	}
 
 	netMutex.Lock()

@@ -1,5 +1,5 @@
 /*
-	Copyright (c) 2015-2016 Christopher Young / Serge Guex v1
+	Copyright (c) 2015-2016 Christopher Young
 	Distributable under the terms of The "BSD New" License
 	that can be found in the LICENSE file, herein included
 	as part of this header.
@@ -26,7 +26,7 @@ import (
 	"syscall"
 	"text/template"
 	"time"
-	
+
 	humanize "github.com/dustin/go-humanize"
 	"golang.org/x/net/websocket"
 )
@@ -258,6 +258,7 @@ func handleSettingsSetRequest(w http.ResponseWriter, r *http.Request) {
 		// raw, _ := httputil.DumpRequest(r, true)
 		// log.Printf("handleSettingsSetRequest:raw: %s\n", raw)
 
+		var resetWiFi bool
 		decoder := json.NewDecoder(r.Body)
 		for {
 			var msg map[string]interface{} // support arbitrary JSON
@@ -295,8 +296,6 @@ func handleSettingsSetRequest(w http.ResponseWriter, r *http.Request) {
 						}
 					case "DEBUG":
 						globalSettings.DEBUG = val.(bool)
-					case "NetworkFLARM":
-						globalSettings.NetworkFLARM = val.(bool)                                   
 					case "DisplayTrafficSource":
 						globalSettings.DisplayTrafficSource = val.(bool)
 					case "ReplayLog":
@@ -414,7 +413,7 @@ func handleSettingsSetRequest(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// while it may be redundent, we return the latest settings
+		// while it may be redundant, we return the latest settings
 		settingsJSON, _ := json.Marshal(&globalSettings)
 		fmt.Fprintf(w, "%s\n", settingsJSON)
 	}
