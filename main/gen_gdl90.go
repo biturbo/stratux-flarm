@@ -52,6 +52,7 @@ const (
 	dataLogFile    = "stratux.sqlite"
 	//FlightBox: log to /root.
 	logDir_FB           = "/root/"
+	wifiConfigLocation  = "/etc/hostapd/hostapd.user"
 	maxDatagramSize     = 8192
 	maxUserMsgQueueSize = 25000 // About 10MB per port per connected client.
 
@@ -76,6 +77,7 @@ const (
 
 	MSGCLASS_UAT = 0
 	MSGCLASS_ES  = 1
+	MSGCLASS_FLARM = 2
 
 	LON_LAT_RESOLUTION = float32(180.0 / 8388608.0)
 	TRACK_RESOLUTION   = float32(360.0 / 256.0)
@@ -89,6 +91,7 @@ const (
 		GPS_TYPE_GARMIN   = 0x06
 	*/
 
+	GPS_TYPE_UBX9     = 0x09
 	GPS_TYPE_UBX8     = 0x08
 	GPS_TYPE_UBX7     = 0x07
 	GPS_TYPE_UBX6     = 0x06
@@ -340,6 +343,9 @@ func makeOwnshipReport() bool {
 	} else if isTempPressValid() {
 		altf = float64(mySituation.BaroPressureAltitude)
 		validAltf = true
+	} else if isGPSValid() {
+		altf = float64(mySituation.GPSAltitudeMSL)
+		validAltf = true
 	}
 
 	if validAltf {
@@ -441,9 +447,16 @@ func makeOwnshipGeometricAltitudeReport() bool {
 	msg := make([]byte, 5)
 	// See p.28.
 	msg[0] = 0x0B                                // Message type "Ownship Geo Alt".
-	alt := int16(mySituation.GPSAltitudeMSL / 5) // GPS Altitude, encoded to 16-bit int using 5-foot resolution
-	msg[1] = byte(alt >> 8)                      // Altitude.
-	msg[2] = byte(alt & 0x00FF)                  // Altitude.
+
+	var GPSalt float32
+	if globalSettings.GDL90MSLAlt_Enabled {
+		GPSalt = mySituation.GPSAltitudeMSL
+	} else {
+		GPSalt = mySituation.GPSHeightAboveEllipsoid
+	}
+	encodedAlt := int16(GPSalt / 5)    // GPS Altitude, encoded to 16-bit int using 5-foot resolution
+	msg[1] = byte(encodedAlt >> 8)     // Altitude.
+	msg[2] = byte(encodedAlt & 0x00FF) // Altitude.
 
 	//TODO: "Figure of Merit". 0x7FFF "Not available".
 	msg[3] = 0x00
@@ -671,7 +684,9 @@ func makeFFIDMessage() []byte {
 	}
 	copy(msg[19:], devLongName)
 
-	msg[38] = 0x01 // Capabilities mask. MSL altitude for Ownship Geometric report.
+	if globalSettings.GDL90MSLAlt_Enabled {
+		msg[38] = 0x01 // Capabilities mask. MSL altitude for Ownship Geometric report.
+	}
 
 	return prepareMessage(msg)
 }
@@ -736,12 +751,31 @@ func blinkStatusLED() {
 	}
 }
 
+func sendAllOwnshipInfo() {
+	//log.Printf("Sending ownship info")
+	sendGDL90(makeHeartbeat(), false)
+	if !globalSettings.SkyDemonAndroidHack {
+		// Skydemon ignores these anyway - reduce data rate a bit
+		sendGDL90(makeStratuxHeartbeat(), false)
+		sendGDL90(makeStratuxStatus(), false)
+		sendGDL90(makeFFIDMessage(), false)
+	}
+	makeOwnshipReport()
+	makeOwnshipGeometricAltitudeReport()
+}
+
 func heartBeatSender() {
+	timerFast := time.NewTicker(150 * time.Millisecond)
 	timer := time.NewTicker(1 * time.Second)
 	timerMessageStats := time.NewTicker(2 * time.Second)
 	ledBlinking := false
 	for {
 		select {
+		case <-timerFast.C:
+			// Skydemon Android socket bug workaround: send ownship info every 200ms
+			if globalSettings.SkyDemonAndroidHack {
+				sendAllOwnshipInfo()
+			}
 		case <-timer.C:
 			// Green LED - always on during normal operation.
 			//  Blinking when there is a critical system error (and Stratux is still running).
@@ -757,27 +791,25 @@ func heartBeatSender() {
 				ledBlinking = true
 			}
 
-			sendGDL90(makeHeartbeat(), false)
-			sendGDL90(makeStratuxHeartbeat(), false)
-			sendGDL90(makeStratuxStatus(), false)
-			sendGDL90(makeFFIDMessage(), false)
-			makeOwnshipReport()
-			makeOwnshipGeometricAltitudeReport()
+			// Normal behaviour: Send ownship info once per secopnd
+			if !globalSettings.SkyDemonAndroidHack {
+				sendAllOwnshipInfo()
+			}
 
 			// --- debug code: traffic demo ---
 			// Uncomment and compile to display large number of artificial traffic targets
 			/*
 				numTargets := uint32(36)
 				hexCode := uint32(0xFF0000)
-
+				
 				for i := uint32(0); i < numTargets; i++ {
 					tail := fmt.Sprintf("DEMO%d", i)
 					alt := float32((i*117%2000)*25 + 2000)
 					hdg := int32((i * 149) % 360)
 					spd := float64(50 + ((i*23)%13)*37)
-
 					updateDemoTraffic(i|hexCode, tail, alt, spd, hdg)
-
+					
+					
 				}
 			*/
 
@@ -796,6 +828,7 @@ func updateMessageStats() {
 	m := len(MsgLog)
 	UAT_messages_last_minute := uint(0)
 	ES_messages_last_minute := uint(0)
+	FLARM_messages_last_minute := uint(0)
 
 	ADSBTowerMutex.Lock()
 	defer ADSBTowerMutex.Unlock()
@@ -835,12 +868,15 @@ func updateMessageStats() {
 				}
 			} else if MsgLog[i].MessageClass == MSGCLASS_ES {
 				ES_messages_last_minute++
+			} else if MsgLog[i].MessageClass == MSGCLASS_FLARM {
+				FLARM_messages_last_minute++
 			}
 		}
 	}
-	MsgLog = t
+MsgLog = t
 	globalStatus.UAT_messages_last_minute = UAT_messages_last_minute
 	globalStatus.ES_messages_last_minute = ES_messages_last_minute
+	globalStatus.FLARM_messages_last_minute = FLARM_messages_last_minute
 
 	// Update "max messages/min" counters.
 	if globalStatus.UAT_messages_max < UAT_messages_last_minute {
@@ -848,6 +884,9 @@ func updateMessageStats() {
 	}
 	if globalStatus.ES_messages_max < ES_messages_last_minute {
 		globalStatus.ES_messages_max = ES_messages_last_minute
+	}
+	if globalStatus.FLARM_messages_max < FLARM_messages_last_minute {
+		globalStatus.FLARM_messages_max = FLARM_messages_last_minute
 	}
 
 	// Update average signal strength over last minute for all ADSB towers.
@@ -1106,7 +1145,6 @@ type settings struct {
 	SerialOutputs        map[string]serialConnection
 	DisplayTrafficSource bool
 	DEBUG                bool
-	NetworkFLARM		 bool
 	ReplayLog            bool
 	AHRSLog              bool
 	IMUMapping           [2]int     // Map from aircraft axis to sensor axis: accelerometer
@@ -1118,6 +1156,12 @@ type settings struct {
 	DeveloperMode        bool
 	GLimits              string
 	StaticIps            []string
+	WiFiSSID             string
+	WiFiChannel          int
+	WiFiSecurityEnabled  bool
+	WiFiPassphrase       string
+	GDL90MSLAlt_Enabled  bool
+	SkyDemonAndroidHack  bool
 }
 
 type status struct {
@@ -1131,9 +1175,13 @@ type status struct {
 	UAT_messages_max                           uint
 	ES_messages_last_minute                    uint
 	ES_messages_max                            uint
+	FLARM_messages_last_minute                 uint
+	FLARM_messages_max                         uint
+	FLARM_connected                            bool
 	UAT_traffic_targets_tracking               uint16
 	ES_traffic_targets_tracking                uint16
 	Ping_connected                             bool
+	UATRadio_connected                         bool
 	GPS_satellites_locked                      uint16
 	GPS_satellites_seen                        uint16
 	GPS_satellites_tracked                     uint16
@@ -1144,6 +1192,8 @@ type status struct {
 	Uptime                                     int64
 	UptimeClock                                time.Time
 	CPUTemp                                    float32
+	CPUTempMin                                 float32
+	CPUTempMax                                 float32
 	NetworkDataMessagesSent                    uint64
 	NetworkDataMessagesSentNonqueueable        uint64
 	NetworkDataBytesSent                       uint64
@@ -1180,18 +1230,18 @@ func defaultSettings() {
 	//FIXME: Need to change format below.
 	globalSettings.NetworkOutputs = []networkConnection{
 		{Conn: nil, Ip: "", Port: 4000, Capability: NETWORK_GDL90_STANDARD | NETWORK_AHRS_GDL90},
-		//		{Conn: nil, Ip: "", Port: 10110, Capability: NETWORK_FLARM_NMEA}, // UDP output on IANA-assigned NMEA port. Compatible with XCSoar
 		//		{Conn: nil, Ip: "", Port: 49002, Capability: NETWORK_AHRS_FFSIM},
 	}
 	globalSettings.DEBUG = false
-	globalSettings.NetworkFLARM = true         // default to true for the FLARM test branch; disable if committing to master	
 	globalSettings.DisplayTrafficSource = false
 	globalSettings.ReplayLog = false //TODO: 'true' for debug builds.
 	globalSettings.AHRSLog = false
 	globalSettings.IMUMapping = [2]int{-1, 0}
 	globalSettings.OwnshipModeS = "F00000"
-	globalSettings.DeveloperMode = false
+	globalSettings.DeveloperMode = true
 	globalSettings.StaticIps = make([]string, 0)
+	globalSettings.GDL90MSLAlt_Enabled = true
+	globalSettings.SkyDemonAndroidHack = false
 }
 
 func readSettings() {
@@ -1218,6 +1268,7 @@ func readSettings() {
 	}
 	globalSettings = newSettings
 	log.Printf("read in settings.\n")
+	readWiFiUserSettings()
 }
 
 func addSystemError(err error) {
@@ -1249,6 +1300,58 @@ func saveSettings() {
 	jsonSettings, _ := json.Marshal(&globalSettings)
 	fd.Write(jsonSettings)
 	log.Printf("wrote settings.\n")
+}
+
+func readWiFiUserSettings() {
+	fd, err := os.Open(wifiConfigLocation)
+	if err != nil {
+		log.Printf("can't read wifi settings %s: %s\n", wifiConfigLocation, err.Error())
+		return
+	}
+	defer fd.Close()
+
+	// Default values
+	globalSettings.WiFiSSID = "stratux"
+	globalSettings.WiFiChannel = 8
+	globalSettings.WiFiSecurityEnabled = false
+
+	scanner := bufio.NewScanner(fd)
+	var line []string
+	for scanner.Scan() {
+		line = strings.SplitN(scanner.Text(), "=", 2)
+		switch line[0] {
+		case "ssid":
+			globalSettings.WiFiSSID = line[1]
+		case "channel":
+			globalSettings.WiFiChannel, _ = strconv.Atoi(line[1])
+		case "wpa_passphrase":
+			globalSettings.WiFiPassphrase = line[1]
+			globalSettings.WiFiSecurityEnabled = true
+		default:
+		}
+	}
+	return
+}
+
+func saveWiFiUserSettings() {
+	fd, err := os.OpenFile(wifiConfigLocation, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(0644))
+	if err != nil {
+		err_ret := fmt.Errorf("can't save settings %s: %s", wifiConfigLocation, err.Error())
+		addSystemError(err_ret)
+		log.Printf("%s\n", err_ret.Error())
+		return
+	}
+	defer fd.Close()
+
+	writer := bufio.NewWriter(fd)
+	fmt.Fprintf(writer, "ssid=%s\n", globalSettings.WiFiSSID)
+	fmt.Fprintf(writer, "channel=%d\n", globalSettings.WiFiChannel)
+	fmt.Fprint(writer, "\n")
+	if globalSettings.WiFiSecurityEnabled {
+		fmt.Fprint(writer, "auth_algs=1\nwpa=3\nwpa_key_mgmt=WPA-PSK\nwpa_pairwise=TKIP\nrsn_pairwise=CCMP\n")
+		fmt.Fprintf(writer, "wpa_passphrase=%s\n", globalSettings.WiFiPassphrase)
+	}
+	writer.Flush()
 }
 
 func openReplay(fn string, compressed bool) (WriteCloser, error) {
@@ -1407,13 +1510,34 @@ func gracefulShutdown() {
 
 	// Turn off green ACT LED on the Pi.
 	ioutil.WriteFile("/sys/class/leds/led0/brightness", []byte("0\n"), 0644)
-	os.Exit(1)
+}
+
+// Close log file handle, open new one.
+func handleSIGHUP() {
+	logFileHandle.Close()
+	fp, err := os.OpenFile(debugLogf, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		addSingleSystemErrorf(debugLogf, "Failed to open '%s': %s", debugLogf, err.Error())
+	} else {
+		// Keep the logfile handle for later use
+		logFileHandle = fp
+		mfp := io.MultiWriter(fp, os.Stdout)
+		log.SetOutput(mfp)
+	}
+	log.Printf("signal caught: SIGHUP, handled.\n")
 }
 
 func signalWatcher() {
-	sig := <-sigs
-	log.Printf("signal caught: %s - shutting down.\n", sig.String())
-	gracefulShutdown()
+	for {
+		sig := <-sigs
+		if sig == syscall.SIGHUP {
+			handleSIGHUP()
+		} else {
+			log.Printf("signal caught: %s - shutting down.\n", sig.String())
+			gracefulShutdown()
+			os.Exit(1)
+		}
+	}
 }
 
 func clearDebugLogFile() {
@@ -1574,12 +1698,23 @@ func main() {
 	go printStats()
 
 	// Monitor RPi CPU temp.
+	globalStatus.CPUTempMin = invalidCpuTemp
+	globalStatus.CPUTempMax = invalidCpuTemp
 	go cpuTempMonitor(func(cpuTemp float32) {
 		globalStatus.CPUTemp = cpuTemp
+		if isCPUTempValid(cpuTemp) && ((cpuTemp < globalStatus.CPUTempMin) || !isCPUTempValid(globalStatus.CPUTempMin)) {
+			globalStatus.CPUTempMin = cpuTemp
+		}
+		if isCPUTempValid(cpuTemp) && ((cpuTemp > globalStatus.CPUTempMax) || !isCPUTempValid(globalStatus.CPUTempMax)) {
+			globalStatus.CPUTempMax = cpuTemp
+		}
 	})
-
+	
 	// Initialize the FLARM (out) network handler.
 	tcpNMEAListener()
+	
+	// Start reading from serial UAT radio.
+	initUATRadioSerial()
 
 	reader := bufio.NewReader(os.Stdin)
 

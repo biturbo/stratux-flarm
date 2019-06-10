@@ -14,8 +14,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	humanize "github.com/dustin/go-humanize"
-	"golang.org/x/net/websocket"
 	"io"
 	"io/ioutil"
 	"log"
@@ -28,6 +26,9 @@ import (
 	"syscall"
 	"text/template"
 	"time"
+	
+	humanize "github.com/dustin/go-humanize"
+	"golang.org/x/net/websocket"
 )
 
 type SettingMessage struct {
@@ -238,6 +239,7 @@ func handleSatellitesRequest(w http.ResponseWriter, r *http.Request) {
 func handleSettingsGetRequest(w http.ResponseWriter, r *http.Request) {
 	setNoCache(w)
 	setJSONHeaders(w)
+	readWiFiUserSettings()
 	settingsJSON, _ := json.Marshal(&globalSettings)
 	fmt.Fprintf(w, "%s\n", settingsJSON)
 }
@@ -368,11 +370,47 @@ func handleSettingsSetRequest(w http.ResponseWriter, r *http.Request) {
 							continue
 						}
 						globalSettings.StaticIps = ips
+					case "WiFiSSID":
+						globalSettings.WiFiSSID = val.(string)
+						resetWiFi = true
+					case "WiFiChannel":
+						globalSettings.WiFiChannel = int(val.(float64))
+						resetWiFi = true
+					case "WiFiSecurityEnabled":
+						globalSettings.WiFiSecurityEnabled = val.(bool)
+						resetWiFi = true
+					case "WiFiPassphrase":
+						globalSettings.WiFiPassphrase = val.(string)
+						resetWiFi = true
+					case "GDL90MSLAlt_Enabled":
+						globalSettings.GDL90MSLAlt_Enabled = val.(bool)
+					case "SkyDemonAndroidHack":
+						globalSettings.SkyDemonAndroidHack = val.(bool)
 					default:
 						log.Printf("handleSettingsSetRequest:json: unrecognized key:%s\n", key)
 					}
 				}
 				saveSettings()
+				if resetWiFi {
+					saveWiFiUserSettings()
+					go func() {
+						time.Sleep(time.Second)
+						cmd := exec.Command("ifdown", "wlan0")
+						if err := cmd.Start(); err != nil {
+							log.Printf("Error shutting down WiFi: %s\n", err.Error())
+						}
+						if err = cmd.Wait(); err != nil {
+							log.Printf("Error shutting down WiFi: %s\n", err.Error())
+						}
+						cmd = exec.Command("ifup", "wlan0")
+						if err := cmd.Start(); err != nil {
+							log.Printf("Error starting WiFi: %s\n", err.Error())
+						}
+						if err = cmd.Wait(); err != nil {
+							log.Printf("Error starting WiFi: %s\n", err.Error())
+						}
+					}()
+				}
 			}
 		}
 
@@ -384,11 +422,13 @@ func handleSettingsSetRequest(w http.ResponseWriter, r *http.Request) {
 
 func handleShutdownRequest(w http.ResponseWriter, r *http.Request) {
 	syscall.Sync()
+	gracefulShutdown()
 	syscall.Reboot(syscall.LINUX_REBOOT_CMD_POWER_OFF)
 }
 
 func doReboot() {
 	syscall.Sync()
+	gracefulShutdown()
 	syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART)
 }
 
