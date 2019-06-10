@@ -2,15 +2,21 @@
 #  Auto-detect common USB stratux peripherals.
 
 # u-blox devices. Known devices include
-#   ublox8: RY835AI, RY836AI
-#   ublox7: VK-172, RY725AI
+#   ublox9: experimental boards
+#   ublox8: RY835AI, RY836AI, GPYes 2.0
+#   ublox7: VK-172, RY725AI, GPYes
 #   ublox6: VK-162
 
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a9", SYMLINK+="ublox9"
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a8", SYMLINK+="ublox8"
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a7", SYMLINK+="ublox7"
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a6", SYMLINK+="ublox6"
 #SUBSYSTEMS=="usb", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a7", SYMLINK+="vk172"
 #SUBSYSTEMS=="usb", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a6", SYMLINK+="vk162"
+
+# Stratux uatradio.
+#  0403:7028 (Stratux UATRadio)
+ATTRS{idProduct}=="7028", ATTRS{idVendor}=="0403", RUN+="/sbin/modprobe -q ftdi_sio" RUN+="/bin/sh -c 'echo 0403 7028 > /sys/bus/usb-serial/drivers/ftdi_sio/new_id'", OWNER="root", MODE="0666", SYMLINK+="uatradio"
 
 
 
@@ -29,3 +35,11 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", SYMLINK+="
 #                 --set-bus-powered=no
 
 SUBSYSTEMS=="usb", ATTRS{interface}=="Stratux Serialout", SYMLINK+="serialout%n"
+
+
+# SoftRF.
+
+# SoftRF Standalone (NodeMCU or DoIt ESP32 devkit with CP2102 chip)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{product}=="DIY SoftRF", SYMLINK+="softrf"
+# TTGO T-Beam (ESP32 with OTP CP2104 chip)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{product}=="CP2104 USB to UART Bridge Controller", SYMLINK+="softrf"

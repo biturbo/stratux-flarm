@@ -1,15 +1,16 @@
-angular.module('appControllers').controller('SettingsCtrl', SettingsCtrl); // get the main module contollers set
+angular.module('appControllers').controller('SettingsCtrl', SettingsCtrl); // get the main module controllers set
 SettingsCtrl.$inject = ['$rootScope', '$scope', '$state', '$location', '$window', '$http']; // Inject my dependencies
+
 
 // create our controller function with all necessary logic
 function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 
 	$scope.$parent.helppage = 'plates/settings-help.html';
-//	var toggles = ['UAT_Enabled', 'ES_Enabled', 'FLARM_Enabled', 'Ping_Enabled', 'GPS_Enabled', 'IMU_Sensor_Enabled',
-	var toggles = ['UAT_Enabled', 'ES_Enabled', 'FLARM_Enabled', 'NetworkFLARM', 'Ping_Enabled', 'GPS_Enabled', 'IMU_Sensor_Enabled',
-		'BMP_Sensor_Enabled', 'DisplayTrafficSource', 'DEBUG', 'ReplayLog', 'AHRSLog', 'GDL90MSLAlt_Enabled', 'SkyDemonAndroidHack'];
+
+	var toggles = ['UAT_Enabled', 'ES_Enabled', 'FLARM_Enabled', 'Ping_Enabled', 'GPS_Enabled', 'IMU_Sensor_Enabled',
+		'BMP_Sensor_Enabled', 'DisplayTrafficSource', 'DEBUG', 'ReplayLog', 'AHRSLog', 'GDL90MSLAlt_Enabled'];
 	var settings = {};
-	for (i = 0; i < toggles.length; i++) {
+	for (var i = 0; i < toggles.length; i++) {
 		settings[toggles[i]] = undefined;
 	}
 	$scope.update_files = '';
@@ -26,7 +27,6 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 		$scope.UAT_Enabled = settings.UAT_Enabled;
 		$scope.ES_Enabled = settings.ES_Enabled;
 		$scope.FLARM_Enabled = settings.FLARM_Enabled;
-		$scope.NetworkFLARM = settings.NetworkFLARM;
 		$scope.Ping_Enabled = settings.Ping_Enabled;
 		$scope.GPS_Enabled = settings.GPS_Enabled;
 
@@ -43,14 +43,14 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 		$scope.DeveloperMode = settings.DeveloperMode;
         $scope.GLimits = settings.GLimits;
         $scope.GDL90MSLAlt_Enabled = settings.GDL90MSLAlt_Enabled;
-		$scope.SkyDemonAndroidHack = settings.SkyDemonAndroidHack;
 		$scope.StaticIps = settings.StaticIps;
+
         $scope.WiFiSSID = settings.WiFiSSID;
         $scope.WiFiPassphrase = settings.WiFiPassphrase;
         $scope.WiFiSecurityEnabled = settings.WiFiSecurityEnabled;
         $scope.WiFiChannel = settings.WiFiChannel;
-		
-		$scope.Channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+        $scope.Channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 	}
 
 	function getSettings() {
@@ -84,6 +84,11 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 
 	getSettings();
 
+    // Reset all settings from a button on the page
+    $scope.resetSettings = function () {
+        getSettings();
+    };
+
 	$scope.$watchGroup(toggles, function (newValues, oldValues, scope) {
 		var newsettings = {};
 		var dirty = false;
@@ -106,7 +111,7 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 		settings["PPM"] = 0;
 		if (($scope.PPM !== undefined) && ($scope.PPM !== null) && ($scope.PPM !== settings["PPM"])) {
 			settings["PPM"] = parseInt($scope.PPM);
-			newsettings = {
+			var newsettings = {
 				"PPM": settings["PPM"]
 			};
 			// console.log(angular.toJson(newsettings));
@@ -118,7 +123,7 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 		settings["Baud"] = 0;
 		if (($scope.Baud !== undefined) && ($scope.Baud !== null) && ($scope.Baud !== settings["Baud"])) {
 			settings["Baud"] = parseInt($scope.Baud);
-			newsettings = {
+			var newsettings = {
 				"Baud": settings["Baud"]
 			};
 			// console.log(angular.toJson(newsettings));
@@ -126,24 +131,24 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 		}
 	};
 
-    $scope.updatewatchlist = function () {
-        if ($scope.WatchList !== settings["WatchList"]) {
-            settings["WatchList"] = "";
-            if ($scope.WatchList !== undefined) {
-                settings["WatchList"] = $scope.WatchList.toUpperCase();
-            }
-            newsettings = {
-                "WatchList": settings["WatchList"]
-            };
-            // console.log(angular.toJson(newsettings));
-            setSettings(angular.toJson(newsettings));
-        }
-    };
+	$scope.updatewatchlist = function () {
+		if ($scope.WatchList !== settings["WatchList"]) {
+			settings["WatchList"] = "";
+			if ($scope.WatchList !== undefined) {
+				settings["WatchList"] = $scope.WatchList.toUpperCase();
+			}
+			var newsettings = {
+				"WatchList": settings["WatchList"]
+			};
+			// console.log(angular.toJson(newsettings));
+			setSettings(angular.toJson(newsettings));
+		}
+	};
 
 	$scope.updatemodes = function () {
 		if ($scope.OwnshipModeS !== settings["OwnshipModeS"]) {
 			settings["OwnshipModeS"] = $scope.OwnshipModeS.toUpperCase();
-			newsettings = {
+			var newsettings = {
 				"OwnshipModeS": $scope.OwnshipModeS.toUpperCase()
 			};
 			// console.log(angular.toJson(newsettings));
@@ -153,18 +158,18 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 
 	$scope.updatestaticips = function () {
 		if ($scope.StaticIps !== settings.StaticIps) {
-			newsettings = {
-				"StaticIps": $scope.StaticIps === undefined ? "" : $scope.StaticIps.join(' ')
+			var newsettings = {
+				"StaticIps": $scope.StaticIps === undefined? "" : $scope.StaticIps.join(' ')
 			};
 			// console.log(angular.toJson(newsettings));
 			setSettings(angular.toJson(newsettings));
 		}
 	};
 
-	$scope.updateGLimits = function () {
+    $scope.updateGLimits = function () {
         if ($scope.GLimits !== settings["GLimits"]) {
             settings["GLimits"] = $scope.GLimits;
-            newsettings = {
+            var newsettings = {
                 "GLimits": settings["GLimits"]
             };
             // console.log(angular.toJson(newsettings));
@@ -172,16 +177,16 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
         }
     };
 
-	$scope.postShutdown = function () {
-		$window.location.href = "/";
-		$location.path('/home');
-		$http.post(URL_SHUTDOWN).
-		then(function (response) {
-			// do nothing
-			// $scope.$apply();
-		}, function (response) {
-			// do nothing
-		});
+    $scope.postShutdown = function () {
+        $window.location.href = "/";
+        $location.path('/home');
+        $http.post(URL_SHUTDOWN).
+        then(function (response) {
+            // do nothing
+            // $scope.$apply();
+        }, function (response) {
+            // do nothing
+        });
 	};
 
 	$scope.postReboot = function () {
@@ -200,10 +205,12 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 		$scope.update_files = files;
 		$scope.$apply();
 	};
+
 	$scope.resetUploadFile = function () {
 		$scope.update_files = '';
 		$scope.$apply();
 	};
+
 	$scope.uploadFile = function () {
 		var fd = new FormData();
 		//Take the first selected file
@@ -230,7 +237,7 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 			},
 			transformRequest: angular.identity
 		}).success(function (data) {
-			alert("success. wait 60 seconds and refresh home page to verify new version.");
+			alert("success. wait 5 minutes and refresh home page to verify new version.");
 			window.location.replace("/");
 		}).error(function (data) {
 			alert("error");
@@ -250,9 +257,9 @@ function SettingsCtrl($rootScope, $scope, $state, $location, $window, $http) {
 			$scope.Ui.turnOff('modalCalibrateDone');
 			$scope.Ui.turnOn("modalCalibrateFailed");
 		});
-	};
+    };
 
-	$scope.updateWiFi = function(action) {
+    $scope.updateWiFi = function(action) {
         $scope.WiFiErrors = {
             'WiFiSSID': '',
             'WiFiPassphrase': '',

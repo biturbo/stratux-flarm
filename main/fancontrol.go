@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/takama/daemon"
 	"log"
 	"net/http"
@@ -17,9 +19,33 @@ import (
 // #cgo LDFLAGS: -lwiringPi
 import "C"
 
+// Initialize Prometheus metrics.
+var (
+	currentTemp = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "current_temp",
+		Help: "Current CPU temp.",
+	})
+
+	totalFanOnTime = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "total_fan_on_time",
+			Help: "Total fan run time.",
+		},
+		[]string{"all"},
+	)
+
+	totalUptime = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "total_uptime",
+			Help: "Total uptime.",
+		},
+		[]string{"all"},
+	)
+)
+
 const (
 	// CPU temperature target, degrees C
-	defaultTempTarget = 60.
+	defaultTempTarget = 50.
 	hysteresis        = float32(1.)
 
 	pwmClockDivisor = 100
@@ -30,10 +56,13 @@ const (
 	defaultPwmDutyMin = 1
 	pwmDutyMax        = 10
 
+	// Temperature at which we give up attempting active fan speed control and set it to full speed.
+	failsafeTemp = 65
+
 	// how often to update
 	delaySeconds = 30
 
-	// GPIO-1/BCM "18"/Pin 12 on a Raspberry PI 3
+	// GPIO-1/BCM "18"/Pin 12 on a Raspberry Pi 3
 	defaultPin = 1
 
 	// name of the service
@@ -57,7 +86,25 @@ var myFanControl FanControl
 
 var stdlog, errlog *log.Logger
 
+func updateStats() {
+	updateTicker := time.NewTicker(1 * time.Second)
+	for {
+		<-updateTicker.C
+		totalUptime.With(prometheus.Labels{"all": "all"}).Inc()
+		currentTemp.Set(float64(myFanControl.TempCurrent))
+		if myFanControl.PWMDutyCurrent > 0 {
+			totalFanOnTime.With(prometheus.Labels{"all": "all"}).Inc()
+		}
+	}
+}
+
 func fanControl() {
+	prometheus.MustRegister(currentTemp)
+	prometheus.MustRegister(totalFanOnTime)
+	prometheus.MustRegister(totalUptime)
+
+	go updateStats()
+
 	cPin := C.int(myFanControl.PWMPin)
 
 	C.wiringPiSetup()
@@ -96,6 +143,10 @@ func fanControl() {
 		//log.Println(myFanControl.TempCurrent, " ", myFanControl.PWMDutyCurrent)
 		C.pwmWrite(cPin, C.int(myFanControl.PWMDutyCurrent))
 		<-delay.C
+		if myFanControl.PWMDutyCurrent == myFanControl.PWMDutyMax && myFanControl.TempCurrent >= failsafeTemp {
+			// Reached the maximum temperature. We stop using PWM control and set the fan to "on" permanently.
+			break
+		}
 	}
 
 	// Default to "ON".
@@ -150,6 +201,7 @@ func (service *Service) Manage() (string, error) {
 	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
 
 	http.HandleFunc("/", handleStatusRequest)
+	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(addr, nil)
 
 	// interrupt by system signal

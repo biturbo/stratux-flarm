@@ -1,5 +1,5 @@
 /*
-	Copyright (c) 2015-2016 Christopher Young / Serge Guex v1
+	Copyright (c) 2015-2016 Christopher Young
 	Distributable under the terms of The "BSD New" License
 	that can be found in the LICENSE file, herein included
 	as part of this header.
@@ -77,7 +77,6 @@ const (
 
 	MSGCLASS_UAT = 0
 	MSGCLASS_ES  = 1
-	MSGCLASS_FLARM = 2
 
 	LON_LAT_RESOLUTION = float32(180.0 / 8388608.0)
 	TRACK_RESOLUTION   = float32(360.0 / 256.0)
@@ -446,7 +445,7 @@ func makeOwnshipGeometricAltitudeReport() bool {
 	}
 	msg := make([]byte, 5)
 	// See p.28.
-	msg[0] = 0x0B                                // Message type "Ownship Geo Alt".
+	msg[0] = 0x0B // Message type "Ownship Geo Alt".
 
 	var GPSalt float32
 	if globalSettings.GDL90MSLAlt_Enabled {
@@ -751,31 +750,12 @@ func blinkStatusLED() {
 	}
 }
 
-func sendAllOwnshipInfo() {
-	//log.Printf("Sending ownship info")
-	sendGDL90(makeHeartbeat(), false)
-	if !globalSettings.SkyDemonAndroidHack {
-		// Skydemon ignores these anyway - reduce data rate a bit
-		sendGDL90(makeStratuxHeartbeat(), false)
-		sendGDL90(makeStratuxStatus(), false)
-		sendGDL90(makeFFIDMessage(), false)
-	}
-	makeOwnshipReport()
-	makeOwnshipGeometricAltitudeReport()
-}
-
 func heartBeatSender() {
-	timerFast := time.NewTicker(150 * time.Millisecond)
 	timer := time.NewTicker(1 * time.Second)
 	timerMessageStats := time.NewTicker(2 * time.Second)
 	ledBlinking := false
 	for {
 		select {
-		case <-timerFast.C:
-			// Skydemon Android socket bug workaround: send ownship info every 200ms
-			if globalSettings.SkyDemonAndroidHack {
-				sendAllOwnshipInfo()
-			}
 		case <-timer.C:
 			// Green LED - always on during normal operation.
 			//  Blinking when there is a critical system error (and Stratux is still running).
@@ -791,25 +771,27 @@ func heartBeatSender() {
 				ledBlinking = true
 			}
 
-			// Normal behaviour: Send ownship info once per secopnd
-			if !globalSettings.SkyDemonAndroidHack {
-				sendAllOwnshipInfo()
-			}
+			sendGDL90(makeHeartbeat(), false)
+			sendGDL90(makeStratuxHeartbeat(), false)
+			sendGDL90(makeStratuxStatus(), false)
+			sendGDL90(makeFFIDMessage(), false)
+			makeOwnshipReport()
+			makeOwnshipGeometricAltitudeReport()
 
 			// --- debug code: traffic demo ---
 			// Uncomment and compile to display large number of artificial traffic targets
 			/*
 				numTargets := uint32(36)
 				hexCode := uint32(0xFF0000)
-				
+
 				for i := uint32(0); i < numTargets; i++ {
 					tail := fmt.Sprintf("DEMO%d", i)
 					alt := float32((i*117%2000)*25 + 2000)
 					hdg := int32((i * 149) % 360)
 					spd := float64(50 + ((i*23)%13)*37)
+
 					updateDemoTraffic(i|hexCode, tail, alt, spd, hdg)
-					
-					
+
 				}
 			*/
 
@@ -828,7 +810,6 @@ func updateMessageStats() {
 	m := len(MsgLog)
 	UAT_messages_last_minute := uint(0)
 	ES_messages_last_minute := uint(0)
-	FLARM_messages_last_minute := uint(0)
 
 	ADSBTowerMutex.Lock()
 	defer ADSBTowerMutex.Unlock()
@@ -868,15 +849,12 @@ func updateMessageStats() {
 				}
 			} else if MsgLog[i].MessageClass == MSGCLASS_ES {
 				ES_messages_last_minute++
-			} else if MsgLog[i].MessageClass == MSGCLASS_FLARM {
-				FLARM_messages_last_minute++
 			}
 		}
 	}
-MsgLog = t
+	MsgLog = t
 	globalStatus.UAT_messages_last_minute = UAT_messages_last_minute
 	globalStatus.ES_messages_last_minute = ES_messages_last_minute
-	globalStatus.FLARM_messages_last_minute = FLARM_messages_last_minute
 
 	// Update "max messages/min" counters.
 	if globalStatus.UAT_messages_max < UAT_messages_last_minute {
@@ -884,9 +862,6 @@ MsgLog = t
 	}
 	if globalStatus.ES_messages_max < ES_messages_last_minute {
 		globalStatus.ES_messages_max = ES_messages_last_minute
-	}
-	if globalStatus.FLARM_messages_max < FLARM_messages_last_minute {
-		globalStatus.FLARM_messages_max = FLARM_messages_last_minute
 	}
 
 	// Update average signal strength over last minute for all ADSB towers.
@@ -1161,7 +1136,6 @@ type settings struct {
 	WiFiSecurityEnabled  bool
 	WiFiPassphrase       string
 	GDL90MSLAlt_Enabled  bool
-	SkyDemonAndroidHack  bool
 }
 
 type status struct {
@@ -1175,9 +1149,6 @@ type status struct {
 	UAT_messages_max                           uint
 	ES_messages_last_minute                    uint
 	ES_messages_max                            uint
-	FLARM_messages_last_minute                 uint
-	FLARM_messages_max                         uint
-	FLARM_connected                            bool
 	UAT_traffic_targets_tracking               uint16
 	ES_traffic_targets_tracking                uint16
 	Ping_connected                             bool
@@ -1241,7 +1212,6 @@ func defaultSettings() {
 	globalSettings.DeveloperMode = true
 	globalSettings.StaticIps = make([]string, 0)
 	globalSettings.GDL90MSLAlt_Enabled = true
-	globalSettings.SkyDemonAndroidHack = false
 }
 
 func readSettings() {
@@ -1399,7 +1369,7 @@ func printStats() {
 		runtime.ReadMemStats(&memstats)
 		log.Printf("stats [started: %s]\n", humanize.RelTime(time.Time{}, stratuxClock.Time, "ago", "from now"))
 		log.Printf(" - Disk bytes used = %s (%.1f %%), Disk bytes free = %s (%.1f %%)\n", humanize.Bytes(usage.Used()), 100*usage.Usage(), humanize.Bytes(usage.Free()), 100*(1-usage.Usage()))
-		log.Printf(" - CPUTemp=%.02f deg C, MemStats.Alloc=%s, MemStats.Sys=%s, totalNetworkMessagesSent=%s\n", globalStatus.CPUTemp, humanize.Bytes(uint64(memstats.Alloc)), humanize.Bytes(uint64(memstats.Sys)), humanize.Comma(int64(totalNetworkMessagesSent)))
+		log.Printf(" - CPUTemp=%.02f [%.02f - %.02f] deg C, MemStats.Alloc=%s, MemStats.Sys=%s, totalNetworkMessagesSent=%s\n", globalStatus.CPUTemp, globalStatus.CPUTempMin, globalStatus.CPUTempMax, humanize.Bytes(uint64(memstats.Alloc)), humanize.Bytes(uint64(memstats.Sys)), humanize.Comma(int64(totalNetworkMessagesSent)))
 		log.Printf(" - UAT/min %s/%s [maxSS=%.02f%%], ES/min %s/%s, Total traffic targets tracked=%s", humanize.Comma(int64(globalStatus.UAT_messages_last_minute)), humanize.Comma(int64(globalStatus.UAT_messages_max)), float64(maxSignalStrength)/10.0, humanize.Comma(int64(globalStatus.ES_messages_last_minute)), humanize.Comma(int64(globalStatus.ES_messages_max)), humanize.Comma(int64(len(seenTraffic))))
 		log.Printf(" - Network data messages sent: %d total, %d nonqueueable.  Network data bytes sent: %d total, %d nonqueueable.\n", globalStatus.NetworkDataMessagesSent, globalStatus.NetworkDataMessagesSentNonqueueable, globalStatus.NetworkDataBytesSent, globalStatus.NetworkDataBytesSentNonqueueable)
 		if globalSettings.GPS_Enabled {
@@ -1493,7 +1463,7 @@ func openReplayFile(fn string) ReadCloser {
 var stratuxClock *monotonic
 var sigs = make(chan os.Signal, 1) // Signal catch channel (shutdown).
 
-// Graceful shutdown.
+// Graceful shutdown. Do everything except for kill the process.
 func gracefulShutdown() {
 	// Shut down SDRs.
 	sdrKill()
@@ -1559,7 +1529,7 @@ func clearDebugLogFile() {
 
 func main() {
 	// Catch signals for graceful shutdown.
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	go signalWatcher()
 
 	stratuxClock = NewMonotonic() // Start our "stratux clock".
@@ -1709,10 +1679,7 @@ func main() {
 			globalStatus.CPUTempMax = cpuTemp
 		}
 	})
-	
-	// Initialize the FLARM (out) network handler.
-	tcpNMEAListener()
-	
+
 	// Start reading from serial UAT radio.
 	initUATRadioSerial()
 

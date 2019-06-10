@@ -67,24 +67,12 @@
                 <div class="panel-body">
                     <div class="form-group reset-flow">
                         <label class="control-label col-xs-5">Mode S Code (Hex)</label>
-                    <form name="modeForm" ng-submit="updatemodes()" novalidate>
-                        <!-- type="number" not supported except on mobile -->
-                        <!-- RegEx for validation: ^[A-Fa-f0-9]{6}$ -->
-						<!--  <input class="col-xs-7" type="string" required ng-model="OwnshipModeS" placeholder="FAA HEX code" ng-blur="updatemodes()" /> -->
-						<select value="OwnshipModeS" ng-model="OwnshipModeS" ng-blur="updatemodes()" placeholder="FAA HEX code">
-							<option class="col-xs-7" value="4B0615" required >HB-CHX</option>
-							<option class="col-xs-7" value="4B0652" required >HB-CKG</option>
-							<option class="col-xs-7" value="4B066D" required >HB-CLH</option>
-							<option class="col-xs-7" value="4B07BF" required >HB-CYH</option>
-							<option class="col-xs-7" value="4B05DD" required >HB-CFT</option>
-							<option class="col-xs-7" value="4B2881" required >HB-PIV</option>
-							<option class="col-xs-7" value="4B28E7" required >HB-PMT</option>							
-							<option class="col-xs-7" value="F00000" required >no Reg</option>
-						</select>						
-						<input class="btn btn-primary btn-block" type="submit">
-                    </form>
-                </div>
-                   <div class="form-group reset-flow">
+                        <form name="modeForm" ng-submit="updatemodes()" novalidate>
+                            <input class="col-xs-7" type="text" hex-input ng-model="OwnshipModeS"
+                                   placeholder="FAA HEX code" ng-blur="updatemodes()" />
+                        </form>
+                    </div>
+                    <div class="form-group reset-flow">
                         <label class="control-label col-xs-5">Watch List</label>
                         <form name="watchForm" ng-submit="updatewatchlist()" novalidate>
                             <input class="col-xs-7" type="text" watchlist-input ng-model="WatchList"
@@ -116,15 +104,9 @@
                         </form>
                 </div>
                 <div class="form-group reset-flow">
-                    <label class="control-label col-xs-5">GDL90: Use MSL instead of HAE, please disable for ForeFlight and SkyDemon</label>
+                    <label class="control-label col-xs-5">GDL90 MSL Altitude</label>
                     <div class="col-xs-5">
                         <ui-switch ng-model='GDL90MSLAlt_Enabled' settings-change></ui-switch>
-                    </div>
-                </div>
-                <div class="form-group reset-flow">
-                    <label class="control-label col-xs-5">SkyDemon Android disconnect bug workaround</label>
-                    <div class="col-xs-5">
-                        <ui-switch ng-model='SkyDemonAndroidHack' settings-change></ui-switch>
                     </div>
                 </div>
             </div>

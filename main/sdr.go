@@ -1,10 +1,10 @@
 /*
-	Copyright (c) 2015-2016 Christopher Young / Serge Guex v1
+	Copyright (c) 2015-2016 Christopher Young
 	Distributable under the terms of The "BSD New" License
 	that can be found in the LICENSE file, herein included
 	as part of this header.
 
-	sdr.go: SDR monitoring, SDR management, data input from UAT/1090ES/FLARM channels.
+	sdr.go: SDR monitoring, SDR management, data input from UAT/1090ES channels.
 */
 
 package main
@@ -63,7 +63,7 @@ type Dump1090TermMessage struct {
 func (e *ES) read() {
 	defer e.wg.Done()
 	log.Println("Entered ES read() ...")
-	cmd := exec.Command("/usr/bin/dump1090", "--modeac", "--net", "--device-index", strconv.Itoa(e.indexID), "--ppm", strconv.Itoa(e.ppm))
+	cmd := exec.Command("/usr/bin/dump1090", "--oversample", "--net", "--device-index", strconv.Itoa(e.indexID), "--ppm", strconv.Itoa(e.ppm))
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
@@ -507,7 +507,7 @@ type regexFLARM regexp.Regexp
 
 var rUAT = (*regexUAT)(reCompile("str?a?t?u?x:978"))
 var rES = (*regexES)(reCompile("str?a?t?u?x:1090"))
-var rFLARM = (*regexFLARM)(reCompile("str?a?t?u?x:868"))
+var rFLARM = (*regexES)(reCompile("str?a?t?u?x:868"))
 
 func (r *regexUAT) hasID(serial string) bool {
 	if r == nil {
@@ -608,7 +608,7 @@ func configDevices(count int, esEnabled, uatEnabled, flarmEnabled bool) {
 	// dongles are set to the same stratux id and the unconsumed,
 	// non-anonymous, dongle makes it to this loop.
 	for i, s := range unusedIDs {
-		if uatEnabled && UATDev == nil && !rES.hasID(s) {
+		if uatEnabled && !globalStatus.UATRadio_connected && UATDev == nil && !rES.hasID(s) {
 			createUATDev(i, s, false)
 		} else if esEnabled && ESDev == nil && !rUAT.hasID(s) {
 			createESDev(i, s, false)
@@ -695,7 +695,11 @@ func sdrWatcher() {
 		uatEnabled := globalSettings.UAT_Enabled
 		flarmEnabled := globalSettings.FLARM_Enabled
 		count := rtl.GetDeviceCount()
-		atomic.StoreUint32(&globalStatus.Devices, uint32(count))
+		interfaceCount := count
+		if globalStatus.UATRadio_connected {
+			interfaceCount++
+		}
+		atomic.StoreUint32(&globalStatus.Devices, uint32(interfaceCount))
 
 		// support up to two dongles
 		if count > 2 {

@@ -11,9 +11,12 @@ import (
 )
 
 /*
+
 #cgo LDFLAGS: -ldump978 -lm
+
 #include <stdint.h>
 #include "../dump978/fec.h"
+
 */
 import "C"
 

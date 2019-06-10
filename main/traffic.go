@@ -1,5 +1,5 @@
 /*
-	Copyright (c) 2015-2016 Christopher Young / Serge Guex v1
+	Copyright (c) 2015-2016 Christopher Young
 	Distributable under the terms of The "BSD New" License
 	that can be found in the LICENSE file, herein included
 	as part of this header.
@@ -189,9 +189,6 @@ func sendTrafficUpdates() {
 	}
 
 	msgs := make([][]byte, 1)
-	msgFLARM := ""
-	numFLARMTargets := int16(0)	
-	
 	if globalSettings.DEBUG && (stratuxClock.Time.Second()%15) == 0 {
 		log.Printf("List of all aircraft being tracked:\n")
 		log.Printf("==================================================================\n")
@@ -220,72 +217,22 @@ func sendTrafficUpdates() {
 			} else {
 				log.Printf("%X => %s\n", ti.Icao_addr, string(s_out))
 			}
+			// end of debug block
 		}
-		// end of debug block
-		
 		traffic[icao] = ti // write the updated ti back to the map
 		//log.Printf("Traffic age of %X is %f seconds\n",icao,ti.Age)
 		if ti.Age > 2 { // if nothing polls an inactive ti, it won't push to the webUI, and its Age won't update.
 			trafficUpdate.SendJSON(ti)
-		
-//			if globalSettings.DEBUG {
-//				log.Printf("%X => Pos valid = %v \n", ti.Icao_addr, ti.Position_valid)		
-//			}
-//			if globalSettings.DEBUG {
-//				log.Printf("Traffic %s DATA: %v \n", ti.Tail, ti)
-//			}
-			
-			// FLARM NO Bearing data
-			
-				if ti.Icao_addr == uint32(code) {
-				if globalSettings.DEBUG {
-					log.Printf("Ownship target detected for code %X\n", code)
-				}
-				//				OwnshipTrafficInfo = ti
-			} else {
-				cur_n := len(msgs) - 1
-				if len(msgs[cur_n]) >= 35 {
-					// Batch messages into packets with at most 35 traffic reports
-					//  to keep each packet under 1KB.
-					cur_n++
-					msgs = append(msgs, make([]byte, 0))
-				}
-				msgs[cur_n] = append(msgs[cur_n], makeTrafficReportMsg(ti)...)
-				
-				/* FLARM NMEA message handling */
-				
-				thisMsgFLARM, validFLARM := makeFlarmPFLAAString(ti)
-				if globalSettings.DEBUG {
-					log.Printf(thisMsgFLARM)
-				}
-						
-				if validFLARM {
-					//sendNetFLARM(thisMsgFLARM)
-					numFLARMTargets++
-					msgFLARM = msgFLARM + thisMsgFLARM
-				} else {
-					if globalSettings.DEBUG {
-						log.Printf("FLARM output: Traffic %X couldn't be translated\n", ti.Icao_addr)
-					}
-				}		
-			}	
 		}
-		
 		if ti.Position_valid && ti.Age < 6 { // ... but don't pass stale data to the EFB.
 			//TODO: Coast old traffic? Need to determine how FF, WingX, etc deal with stale targets.
-			
 			logTraffic(ti) // only add to the SQLite log if it's not stale
 
-//			if globalSettings.DEBUG {
-//				log.Printf("Traffic %s DATA: %v \n", ti.Tail, ti)
-//			}
-			
-			
 			if ti.Icao_addr == uint32(code) {
 				if globalSettings.DEBUG {
 					log.Printf("Ownship target detected for code %X\n", code)
 				}
-				//				OwnshipTrafficInfo = ti
+				OwnshipTrafficInfo = ti
 			} else {
 				cur_n := len(msgs) - 1
 				if len(msgs[cur_n]) >= 35 {
@@ -295,42 +242,15 @@ func sendTrafficUpdates() {
 					msgs = append(msgs, make([]byte, 0))
 				}
 				msgs[cur_n] = append(msgs[cur_n], makeTrafficReportMsg(ti)...)
-				
-				/* FLARM NMEA message handling */
-				thisMsgFLARM, validFLARM := makeFlarmPFLAAString(ti)
-			
-				if globalSettings.DEBUG {
-				    log.Printf(thisMsgFLARM)
-//					log.Printf("%X => Pos valid (true) = %v \n", ti.Icao_addr, ti.Position_valid)
-				}
-				
-				if validFLARM {
-					//sendNetFLARM(thisMsgFLARM)
-					numFLARMTargets++
-					msgFLARM = msgFLARM + thisMsgFLARM
-        } else {
-				if globalSettings.DEBUG {
-					log.Printf("FLARM output: Traffic %X couldn't be translated \n", ti.Icao_addr)
-				}         
-				}
 			}
 		}
 	}
-	
-	/*
-	Send all FLARM NMEA messages in the following order:
-		1. GPRMC position sentence
-		2. GPGGA position sentence
-		3. GPGSA status string (currently hardcoded for test)
-		4. PFLAA sentences for each nearby aircraft
-		5. PFLAU sentence summarizing number of targets and alarm messages on ERB
-	*/
-	sendNetFLARM(makeGPRMCString())
-	sendNetFLARM(makeGPGGAString())
-	sendNetFLARM("$GPGSA,A,3,,,,,,,,,,,,,1.0,1.0,1.0*33\r\n")
 
-	if len(msgFLARM) > 0 {
-		sendNetFLARM(msgFLARM)
+	for i := 0; i < len(msgs); i++ {
+		msg := msgs[i]
+		if len(msg) > 0 {
+			sendGDL90(msg, false)
+		}
 	}
 }
 
@@ -404,6 +324,7 @@ func makeTrafficReportMsg(ti TrafficInfo) []byte {
 	//
 	// Algo example at: https://play.golang.org/p/VXCckSdsvT
 	//
+	// GDL90 expects barometric altitude in traffic reports
 	var baroAlt int32
 	if ti.AltIsGNSS {
 		// Convert from GPS geoid height to barometric altitude
@@ -803,7 +724,7 @@ func parseDownlinkReport(s string, signalLevel int) {
 
 		}
 	}
-	
+
 	ti.Track = track
 	ti.Speed = speed
 	ti.Vvel = vvel
@@ -1177,6 +1098,8 @@ and speed invalid flag is set for headings 135-150 to allow testing of response 
 */
 func updateDemoTraffic(icao uint32, tail string, relAlt float32, gs float64, offset int32) {
 	var ti TrafficInfo
+	trafficMutex.Lock()
+	defer trafficMutex.Unlock()
 
 	// Retrieve previous information on this ICAO code.
 	if val, ok := traffic[icao]; ok { // if we've already seen it, copy it in to do updates
@@ -1260,8 +1183,6 @@ func updateDemoTraffic(icao uint32, tail string, relAlt float32, gs float64, off
 
 	if hdg < 150 || hdg > 240 {
 		// now insert this into the traffic map...
-		trafficMutex.Lock()
-		defer trafficMutex.Unlock()
 		traffic[ti.Icao_addr] = ti
 		registerTrafficUpdate(ti)
 		seenTraffic[ti.Icao_addr] = true
@@ -1281,10 +1202,12 @@ func updateDemoTraffic(icao uint32, tail string, relAlt float32, gs float64, off
 				but are not used for aicraft on the civil registry. These could be
 				military, other public aircraft, or future use.
 
-
 				Values between C0CDF9 - C3FFFF are allocated to Canada,
 				but are not used for aicraft on the civil registry. These could be
 				military, other public aircraft, or future use.
+
+				Values between 7C0000 - 7FFFFF are allocated to Australia.
+
 
 			Output:
 				string: String containing the decoded tail number (if decoding succeeded),
@@ -1306,8 +1229,6 @@ func icao2reg(icao_addr uint32) (string, bool) {
 		nation = "US"
 	} else if (icao_addr >= 0xC00001) && (icao_addr <= 0xC3FFFF) {
 		nation = "CA"
-	} else if (icao_addr >= 0x4B0000) && (icao_addr <= 0X4B7FFF) {
-		nation = "CH"
 	} else if (icao_addr >= 0x7C0000) && (icao_addr <= 0x7FFFFF) {
 		nation = "AU"
 	} else {
@@ -1327,12 +1248,16 @@ func icao2reg(icao_addr uint32) (string, bool) {
 
 		// Fifth letter
 		e := serial % 26
+
 		// Fourth letter
 		d := (serial / 26) % 26
+
 		// Third letter
 		c := (serial / 676) % 26 // 676 == 26*26
+
 		// Second letter
 		b := (serial / 17576) % 26 // 17576 == 26*26*26
+
 		b_str := "FGI"
 
 		//fmt.Printf("B = %d, C = %d, D = %d, E = %d\n",b,c,d,e)
@@ -1340,54 +1265,28 @@ func icao2reg(icao_addr uint32) (string, bool) {
 	}
 
 	if nation == "AU" { // Australia decoding
- 		nationalOffset := uint32(0x7C0000)
+
+		nationalOffset := uint32(0x7C0000)
 		offset := (icao_addr - nationalOffset)
 		i1 := offset / 1296
 		offset2 := offset % 1296
 		i2 := offset2 / 36
 		offset3 := offset2 % 36
 		i3 := offset3
- 		var a_char, b_char, c_char string
- 		a_char = fmt.Sprintf("%c", i1+65)
+
+		var a_char, b_char, c_char string
+
+		a_char = fmt.Sprintf("%c", i1+65)
 		b_char = fmt.Sprintf("%c", i2+65)
 		c_char = fmt.Sprintf("%c", i3+65)
- 		if i1 < 0 || i1 > 25 || i2 < 0 || i2 > 25 || i3 < 0 || i3 > 25 {
+
+		if i1 < 0 || i1 > 25 || i2 < 0 || i2 > 25 || i3 < 0 || i3 > 25 {
 			return "OTHER", false
 		}
- 		tail = "VH-" + a_char + b_char + c_char
+
+		tail = "VH-" + a_char + b_char + c_char
 	}
 
-	if nation == "CH" { // CH decoding
-		// Switzerland Mil(SU) = 4B7000-4B7FFF
-		// Switzerland(CH) = 4B0000-4B7FFF
-		// First, discard addresses that are not assigned to aircraft on the civil registry
-		if icao_addr > 0x4B7000 {
-			//log.Printf("%X is a Swiss aircraft, but not a civil registration.\n", icao_addr)
-			return "CH-MIL", false
-		}
-		
-		// TEST 4B3944 = HB-VRW
-/* 		icao_addr = 0x4B3944
-		
-		nationalOffset := uint32(0x4B0000)
-		offset := (icao_addr - nationalOffset)
-		i1 := offset / 1296
-		offset2 := offset % 1296
-		i2 := offset2 / 36
-		offset3 := offset2 % 36
-		i3 := offset3
- 		var a_char, b_char, c_char string
- 		a_char = fmt.Sprintf("%c", i1+65)
-		b_char = fmt.Sprintf("%c", i2+65)
-		c_char = fmt.Sprintf("%c", i3+65)
- 		if i1 < 0 || i1 > 25 || i2 < 0 || i2 > 25 || i3 < 0 || i3 > 25 {
-			return "OTHER", false
-		}		
-		tail = "HB-"  + a_char + b_char + c_char
-			log.Printf("%X is a Swiss aircraft, civil registration.\n", icao_addr) */
-	}
-	
-		
 	if nation == "US" { // FAA decoding
 		// First, discard addresses that are not assigned to aircraft on the civil registry
 		if icao_addr > 0xADF7C7 {

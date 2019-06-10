@@ -1,5 +1,5 @@
 /*
-	Copyright (c) 2018 Thorsten Biermann / Serge Guex v1
+	Copyright (c) 2017 Thorsten Biermann
 	Distributable under the terms of The "BSD New" License
 	that can be found in the LICENSE file, herein included
 	as part of this header.
@@ -137,7 +137,9 @@ func watchCommand(command *exec.Cmd) {
 	// set status flag
 	ognDecoderIsRunning = false
 
-	log.Printf("FLARM: Process %s terminated: %v", command.Path, err)
+	if globalSettings.DEBUG {
+		log.Printf("FLARM: Process %s terminated: %v", command.Path, err)
+	}
 }
 
 func replaceFlarmDecodingProcess(lonDeg float32, latDeg float32, oldDecodingProcess *os.Process, configFileName string) *os.Process {
@@ -145,7 +147,9 @@ func replaceFlarmDecodingProcess(lonDeg float32, latDeg float32, oldDecodingProc
 
 	// kill old decoding process
 	if oldDecodingProcess != nil {
-		log.Printf("FLARM: Stopping old decoding process (pid=%d)", oldDecodingProcess.Pid)
+		if globalSettings.DEBUG {
+			log.Printf("FLARM: Stopping old decoding process (pid=%d)", oldDecodingProcess.Pid)
+		}
 
 		if err = oldDecodingProcess.Kill(); err != nil {
 			log.Printf("FLARM: Error while killing old decoding process: %s ", err)
@@ -187,7 +191,9 @@ func replaceFlarmDecodingProcess(lonDeg float32, latDeg float32, oldDecodingProc
 
 		return nil
 	}
-	log.Printf("FLARM: Started new decoding process (pid=%d)", decodingCommand.Process.Pid)
+	if globalSettings.DEBUG {
+		log.Printf("FLARM: Started new decoding process (pid=%d)", decodingCommand.Process.Pid)
+	}
 
 	// set status flag
 	ognDecoderIsRunning = true
@@ -200,7 +206,7 @@ func replaceFlarmDecodingProcess(lonDeg float32, latDeg float32, oldDecodingProc
 			line, err := bufio.NewReader(decoderOutput).ReadString('\n')
 			if err == nil {
 				if globalSettings.DEBUG {
-					log.Println("FLARM: ogn-decode stdout:", strings.TrimSpace(line)) 
+					log.Println("FLARM: ogn-decode stdout:", strings.TrimSpace(line))
 				}
 			} else {
 				return
@@ -379,8 +385,7 @@ func processAprsData(aprsData string) {
 		}
 
 		ti.Icao_addr = data.Address
-//		ti.Tail = strings.ToUpper(fmt.Sprintf("F%s%s", decodeFLARMAircraftType(data.AircraftType), strconv.FormatInt(int64(data.Address), 16)))
-		ti.Tail = strings.ToUpper(fmt.Sprintf("F-%s", strconv.FormatInt(int64(data.Address), 16)))
+		ti.Tail = strings.ToUpper(fmt.Sprintf("F%s%s", decodeFLARMAircraftType(data.AircraftType), strconv.FormatInt(int64(data.Address), 16)))
 		ti.Last_source = TRAFFIC_SOURCE_FLARM
 
 		// set altitude
@@ -432,7 +437,9 @@ func processAprsData(aprsData string) {
 
 		trafficMutex.Unlock()
 
-		log.Printf("FLARM APRS: Decoded data: %+v\n", data)
+		if globalSettings.DEBUG {
+			log.Printf("FLARM APRS: Decoded data: %+v\n", data)
+		}
 	}
 }
 
@@ -449,7 +456,9 @@ func sendAprsConnectionHeartBeat(conn net.Conn) {
 }
 
 func handleAprsConnection(conn net.Conn) {
-	log.Println("FLARM APRS: Incoming connection:", conn.RemoteAddr())
+	if globalSettings.DEBUG {
+		log.Println("FLARM APRS: Incoming connection:", conn.RemoteAddr())
+	}
 
 	// send initial message
 	conn.Write([]byte(fmt.Sprintf("# %s %s\r\n", "stratux", globalStatus.Version)))
@@ -469,7 +478,9 @@ func handleAprsConnection(conn net.Conn) {
 
 		// check if message is not a receiver beacon
 		if !strings.HasPrefix(string(message), "Stratux") {
-			log.Println("FLARM APRS: Message received:", string(message))
+			if globalSettings.DEBUG {
+				log.Println("FLARM APRS: Message received:", string(message))
+			}
 		}
 
 		if match := reLoginRequest.FindStringSubmatch(message); match != nil {
@@ -543,19 +554,23 @@ func flarmListen() {
 
 				// stop loop if demodulation process has terminated
 				if stopDecodingLoop == true {
-					log.Println("FLARM: Stopping decoding loop")
+					if globalSettings.DEBUG {
+						log.Println("FLARM: Stopping decoding loop")
+					}
 					break decodingLoop
 				}
 
 				// check if position has changes significantly
 				if !ognDecoderIsRunning || math.Abs(float64(mySituation.GPSLongitude-lastLon)) > 0.001 || math.Abs(float64(mySituation.GPSLatitude-lastLat)) > 0.001 {
-					if !ognDecoderIsRunning {
-						log.Println("FLARM: Decoder is not running")
-					} else {
-						log.Println("FLARM: Own position has changed")
-					}
+					if globalSettings.DEBUG {
+						if !ognDecoderIsRunning {
+							log.Println("FLARM: Decoder is not running")
+						} else {
+							log.Println("FLARM: Own position has changed")
+						}
 
-					log.Println("FLARM: Restarting decoder")
+						log.Println("FLARM: Restarting decoder")
+					}
 
 					// generate OGN configuration file
 					OGNConfigDataCache.Longitude = fmt.Sprintf("%.4f", mySituation.GPSLongitude)
